@@ -13,18 +13,14 @@
 #staload _ = "./../dats/parsec.dats"
 
 #dynload "./../dats/name.dats"
+#dynload "./../dats/parsec.dats"
 
 implement main0() = let 
   val fp = fileref_open_exn("test.txt", file_mode_r) 
-  val fact = mk_name("fact")
-  val x = mk_name("x")
-  val test =
-    LetIn(fact, 
-      Fun(fact, x, 
-        Ifte(Op2(Lte(), Var(x), Int(0)), 
-          Int(1),
-          Op2(Mul(), Var(x), App(Var(fact), Op2(Sub, Var(x), Int(1)))))),
-      App(Var(fact), Int(100)))
+  val st = streamize_fileref_char(fp)
+  val simpl = seqr(string("abc"), seqr(ws(), alt(string("ocaml"), alt(string("haskell"), string("coq")))))
 in
-  println!(run_tree(test))
+  case run_parser(simpl, st) of
+  | ~Some_vt _ => println!("ok")
+  | ~None_vt _ => println!("bad")
 end

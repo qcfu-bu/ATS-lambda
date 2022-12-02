@@ -1,58 +1,45 @@
-fun is_lower_case : char -> bool
-fun is_upper_case : char -> bool
-fun is_alpha : char -> bool
-fun is_digit : char -> bool
-fun is_alphanum : char -> bool
-fun is_blank : char -> bool
+datatype Boxed(a:t@ype) =
+  | Box of a
 
-abstype parser_boxed(a:t@ype)
+typedef Char = Boxed(char)
+typedef Int  = Boxed(int)
+
+fun{a:t@ype}get(Boxed(a)): a
+overload .get with get
+
+val is_lower_case: char -<cloref1> bool
+val is_upper_case: char -<cloref1> bool
+val is_alpha: char -<cloref1> bool
+val is_digit: char -<cloref1> bool
+val is_alphanum: char -<cloref1> bool
+val is_blank: char -<cloref1> bool
+
+abstype parser_boxed(a:type)
 typedef parser(a) = parser_boxed(a)
+typedef chain_fun(a:type) = (a, a) -<cloref1> a
+typedef chain_elem(a:type) = $tup(((a, a) -<cloref1> a), a)
 
-fun run_parser{a:t@ype}(parser(a), string): Option_vt@(a, string)
-fun return{a:t@ype}(a): parser(a)
-fun fail{a:t@ype}(): parser(a)
-fun bind{a,b:t@ype}(parser(a), a -<cloref1> parser(b)): parser(b)
-fun read(): parser(char)
-fun alt{a:t@ype}(parser(a), parser(a)): parser(a)
-fun choice{a:t@ype}(List(parser(a))): parser(a)
-fun satisfy(char -> bool): parser(char)
-fun seql{a,b:t@ype}(parser(a), parser(b)): parser(a)
-fun seqr{a,b:t@ype}(parser(a), parser(b)): parser(b)
-fun map{a,b:t@ype}(parser(a), a -<cloref1> b): parser(b)
-fun const{a,b:t@ype}(parser(a), b): parser(b)
-fun many{a:t@ype}(parser(a)): parser(List(a))
-fun many1{a:t@ype}(parser(a)): parser(List(a))
-fun chainl{a:t@ype}(parser(a), parser((a, a) -<cloref1> a)): parser(a)
-fun chainr{a:t@ype}(parser(a), parser((a, a) -<cloref1> a)): parser(a)
+fun run_parser{a:type}(parser(a), stream_vt(char)): Option_vt(a)
+fun return{a:type}(a): parser(a)
+fun fail{a:type}(): parser(a)
+fun bind{a,b:type}(parser(a), a -<cloref1> parser(b)): parser(b)
+fun read(): parser(Char)
+fun alt{a:type}(parser(a), parser(a)): parser(a)
+fun choice{a:type}(List(parser(a))): parser(a)
+fun satisfy(char -<cloref1> bool): parser(Char)
+fun seql{a,b:type}(parser(a), parser(b)): parser(a)
+fun seqr{a,b:type}(parser(a), parser(b)): parser(b)
+fun map{a,b:type}(parser(a), a -<cloref1> b): parser(b)
+fun const{a,b:type}(parser(a), b): parser(b)
+fun many{a:type}(parser(a)): parser(List0(a))
+fun many1{a:type}(parser(a)): parser(List1(a))
+fun chainl{a:type}(parser(a), parser(chain_fun(a))): parser(a)
+fun chainr{a:type}(parser(a), parser(chain_fun(a))): parser(a)
 fun blank(): parser(unit)
 fun ws(): parser(unit)
 fun ws1(): parser(unit)
-fun digit(): parser(char)
-fun nat(): parser(int)
-fun char(char): parser(char)
+fun digit(): parser(Char)
+fun nat(): parser(Int)
+fun char(char): parser(Char)
 fun string(string): parser(unit)
 fun kw(string): parser(unit)
-
-symintr >>=
-infixr 50 >>=
-overload >>= with bind
-
-symintr <<
-infixr 50 <<
-overload << with seql
-
-symintr >>
-infixr 50 >>
-overload >> with seqr
-
-symintr <|>
-infixr 50 <|>
-overload <|> with alt
-
-symintr >|=
-infixr 50 >|=
-overload >|= with map
-
-symintr >|
-infixr 50 >|
-overload >| with const
