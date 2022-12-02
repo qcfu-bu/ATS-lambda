@@ -1,7 +1,8 @@
 #include "share/atspre_staload.hats"
 #staload "./../sats/parsec.sats"
+#staload UN = "prelude/SATS/unsafe.sats"
 
-implement{a}get(box) = let
+implement{a}unwrap(box) = let
   val Box(v) = box
 in
   v
@@ -117,7 +118,7 @@ in
 
   implement satisfy(f) =
     bind(read(), lam(c) =>
-      if f(c.get()) then
+      if f(c.unwrap()) then
         return(c)
       else
         fail())
@@ -176,6 +177,28 @@ in
   implement ws1() =
     const(many1(blank()), unit())
 
+  implement digit() =
+    satisfy(is_digit)
+
+  implement nat() =
+    bind(many1(digit()), lam(xs : List1(BChar)) => let
+      val cs = list_vt2t(list_map<BChar><charNZ>(xs))
+      val str = strnptr2string(string_make_list(cs))
+      val i = g0string2int(str)
+    in
+      return(Box(i))
+    end) 
+  where {
+    implement list_map$fopr<BChar><charNZ>(x) = let
+      val c = g1ofg0(x.unwrap())
+    in
+      if isneqz(c) then
+        c
+      else
+        $raise parser_error()
+    end
+  }
+
   implement char(c) =
     satisfy(lam(x) => c = x)
 
@@ -214,4 +237,10 @@ in
       in
         loop(cs, st, string_explode(g1ofg0_string(s)))
       end)
+
+  implement kw(s) =
+    seql(string(s), ws())
+
+  implement parens(p) =
+    seqr(kw("("), seql(p, kw(")")))
 end
