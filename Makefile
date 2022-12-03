@@ -35,7 +35,7 @@
 # Project Configuration #################################################
 
 # Project Name
-PROJECT=ats-secd
+PROJECT=ats-lambda
 
 # Directory containing project .sats files
 SATSDIR=src/sats

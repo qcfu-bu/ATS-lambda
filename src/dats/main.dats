@@ -15,15 +15,18 @@
 #dynload "./../dats/name.dats"
 #dynload "./../dats/parsec.dats"
 
-implement main0() = let 
-  val fp = fileref_open_exn("test.txt", file_mode_r) 
-  val buf = streamize_fileref_char(fp)
-in
-  case run_parser(seqr(ws(), term_parser()), buf) of
-  | ~Some_vt m => let 
-      val _ = println!("ParseOk(", m, ")")
-      val _ = println!("TreeWalk(", run_tree(m),")")
-    in 
+implement main0(argc, argv) = 
+  if 2 <= argc then let 
+      val fp = fileref_open_exn(argv[1], file_mode_r) 
+      val buf = streamize_fileref_char(fp)
+    in
+      case run_parser(seqr(ws(), term_parser()), buf) of
+      | ~Some_vt m => let 
+          val _ = println!("ParseOk(", m, ")")
+          val _ = println!("TreeWalk(", run_tree(m),")")
+        in 
+        end
+      | ~None_vt _ => println!("ParseError")
     end
-  | ~None_vt _ => println!("ParseError")
-end
+  else
+    println!("name of file expected")

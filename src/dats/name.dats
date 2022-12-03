@@ -9,7 +9,7 @@ local
   assume name_flt = @(string, ulint)
 in
   fun hash_key(k: string) =
-    string_hash_multiplier (31UL, 31415926536UL, k)
+    string_hash_multiplier(31UL, 31415926536UL, k)
 
   implement mk_name(str) =
     (str, hash_key(str))
