@@ -47,10 +47,10 @@ INCLUDE:=
 LIBRARY:=
 
 # C compiler flags
-CFLAGS=-g
+# CFLAGS=-g
 # CFLAGS=-g
 # CFLAGS=-g -O
-# CFLAGS=-g -O2
+CFLAGS=-g -O2
 
 # Memory allocator mode (none, libc, Bohem-gc)
 # GCFLAG=
