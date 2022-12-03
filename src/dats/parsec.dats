@@ -22,93 +22,51 @@ implement is_blank(c) =
   | _ => false
 
 local
-  vtypedef bktrace = List0_vt(char)
-  vtypedef buffer = stream_vt(char)
+  vtypedef buffer = stream(char)
   datavtype Result_vt(a:type) =
-    | Ok_vt of (a, bktrace, buffer)
-    | Err_vt of (bktrace, buffer)
+    | Ok_vt of (a, buffer)
+    | Err_vt
 
-  val counter = ref<int>0
-  
   assume parser_boxed(a) =
-    lazy((bktrace, buffer) -<cloref1> Result_vt(a))
-
-  fun backtrack(i: int, cs: bktrace, st: buffer): @(bktrace, buffer) =
-    if i <= 0 then
-      (cs, st)
-    else
-      case cs of
-      | @list_vt_nil() => (fold@cs; (cs, st))
-      | ~list_vt_cons(c, cs) =>
-        backtrack(i - 1, cs, stream_vt_make_cons(c, st))
+    lazy(buffer -<cloref1> Result_vt(a))
 in
-  implement run_parser(p, st) = let
-    val _ = counter[] := 0
-  in
-    case (!p)(list_vt_nil(), st) of
-    | ~Ok_vt(a, cs, st) => let
-        val _ = free(cs)
-      in
-        if stream_vt_is_nil(st) then
-          Some_vt(a)
-        else
-          None_vt()
-      end
-    | ~Err_vt(cs, st) => let
-        val _ = free(cs)
-        val _ = ~st
-      in
+  implement run_parser(p, buf) =
+    case (!p)(stream_vt2t(buf)) of
+    | ~Ok_vt(a, buf) => 
+      if stream_is_nil(buf) then
+        Some_vt(a)
+      else
         None_vt()
-      end
-  end
+    | ~Err_vt() => None_vt()
 
   implement return(x) =
-    $delay(lam(cs, st) => Ok_vt(x, cs, st))
+    $delay(lam(buf) => Ok_vt(x, buf))
 
   implement fail() =
-    $delay(lam(cs, st) => Err_vt(cs, st))
+    $delay(lam(_) => Err_vt())
 
   implement bind(p, f) =
-    $delay(lam(cs, st) => let
-      val res_cons = (!p)(cs, st)
+    $delay(lam(buf) => let
+      val res_cons = (!p)(buf)
     in
       case res_cons of
-      | ~Ok_vt(a, cs, st) => (!(f(a)))(cs, st)
-      | @Err_vt(cs, st) => (fold@res_cons; res_cons)
+      | ~Ok_vt(a, buf) => (!(f(a)))(buf)
+      | @Err_vt() => (fold@res_cons; res_cons)
     end)
 
   implement read() =
-    $delay(lam(cs, st) => let
-      val st_cons = !st
-    in
-      case st_cons of
-      | @stream_vt_nil() => let 
-          prval () = fold@{char}st_cons
-        in
-          Err_vt(cs, stream_vt_make_con(st_cons))
-        end
-      | ~stream_vt_cons(c, st) => let
-          val _ = counter[] := counter[] + 1
-        in
-          Ok_vt(Box(c), list_vt_cons(c, cs), st)
-        end
-    end)
+    $delay(lam(buf) =>
+      case !buf of
+      | stream_nil() => Err_vt()
+      | stream_cons(c, buf) => Ok_vt(Box(c), buf))
 
   implement alt(p1, p2) =
-    $delay(lam(cs, st) => let
-        val i = counter[]
-        val p1_cons = (!p1)(cs, st)
+    $delay(lam(buf) => let
+        val p1_cons = (!p1)(buf)
       in
         case p1_cons of
-        | @Ok_vt(a, cs, st) => 
-          (fold@p1_cons; p1_cons)
-        | ~Err_vt(cs, st) => let
-            val diff = counter[] - i
-            val _ = counter[] := i
-            val (cs, st) = backtrack(diff, cs, st) 
-          in
-            (!p2)(cs, st)
-          end
+        | @Ok_vt(_, _) => (fold@p1_cons; p1_cons)
+        | ~Err_vt() => (!p2)(buf)
       end)
 
   implement choice(ps) =
@@ -203,39 +161,22 @@ in
     satisfy(lam(x) => c = x)
 
   implement string(s) = 
-    $delay(lam(cs, st) => let 
-        fun loop(cs: bktrace, st: buffer, xs: List_vt(char)): Result_vt(unit) = let
-          val st_cons = !st
-          val xs_cons = xs
-        in
-          case+ (xs_cons, st_cons) of
-          | (@list_vt_cons(x, xs), @stream_vt_cons(y, st)) =>
-            if x = y then let
-              val xs0 = xs
-              val st0 = st
-              val _ = xs := cs
-              val _ = free@{char}st_cons
-              prval _ = fold@xs_cons
-              val _ = counter[] := counter[] + 1
-            in
-              loop(xs_cons, st0, xs0)
-            end
-            else let
-              val _ = free(xs)
-              val _ = free@{char}{0}(xs_cons)
-              prval _ = fold@{char}st_cons
-            in
-              Err_vt(cs, stream_vt_make_con(st_cons))
-            end
-          | (~list_vt_cons(x, xs), ~stream_vt_nil()) =>
-            (free(xs); Err_vt(cs, stream_vt_make_nil()))
-          | (~list_vt_nil(), @stream_vt_cons(y, st)) =>
-            (fold@{char}st_cons; Ok_vt(unit(), cs, stream_vt_make_con(st_cons)))
-          | (~list_vt_nil(), @stream_vt_nil()) =>
-            (fold@{char}st_cons; Ok_vt(unit(), cs, stream_vt_make_con(st_cons)))
-        end
+    $delay(lam(buf) => let
+        fun loop(xs: List_vt(char), buf: stream(char)): Result_vt(unit) =
+          case (xs, !buf) of
+          | (~list_vt_cons(x, xs), stream_cons(y, buf)) =>
+            if x = y then
+              loop(xs, buf)
+            else
+              (free(xs); Err_vt())
+          | (~list_vt_cons(x, xs), stream_nil()) =>
+            (free(xs); Err_vt())
+          | (~list_vt_nil(), stream_cons(y, buf)) =>
+            Ok_vt(unit(), stream_make_cons(y, buf))
+          | (~list_vt_nil(), stream_nil()) =>
+            Ok_vt(unit(), stream_make_nil())
       in
-        loop(cs, st, string_explode(g1ofg0_string(s)))
+        loop(string_explode(g1ofg0_string(s)), buf)
       end)
 
   implement kw(s) =

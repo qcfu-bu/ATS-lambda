@@ -7,13 +7,11 @@
 #staload "./../sats/name.sats"
 #staload _ = "./parsec.dats"
 #staload _ = "./name.dats"
-#staload UN = "prelude/SATS/unsafe.sats"
 
 local
-  val reserved: List(string) = $list{string}(
+  fun reserved(): List(string) = $list{string}(
     "fun", "let", "rec", "in", "if", 
-    "then", "else", "true", "false"
-  )
+    "then", "else", "true", "false")
 in
   implement int_parser() =
     bind(nat(), lam(x) => let
@@ -28,15 +26,13 @@ in
 
   implement var_parser() = 
     bind(satisfy(is_alpha), lam(c: BChar) =>
-    bind(many(alt(satisfy(is_alphanum), alt(char('_'), char('\'')))), 
-    lam(cs)=> let
+    bind(many(alt(satisfy(is_alphanum), alt(char('_'), char('\'')))), lam(cs)=> let
       val cs = list_vt2t(list_map<BChar><charNZ>(list_cons(c, cs)))
       val str = string_make_list(cs)
       val str = strnptr2string(str)
-      implement list_exists$pred<string>(x) = 
-        x = str
+      implement list_exists$pred<string>(x) = x = str
     in
-      if list_exists<string>(reserved) then
+      if list_exists<string>(reserved()) then
         fail()
       else
         seql(return(str), ws())
@@ -127,4 +123,69 @@ in
       letin_parser(),
       ifte_parser(),
       parens(term_parser()))))
+
+  implement term1_parser() = let
+    val opr : parser((term, term) -<cloref1> term) = 
+      return (lam(m, n) =<cloref1> App(m, n))
+  in
+    chainl(term0_parser(), opr)
+  end
+
+  implement term2_parser() = let
+    val opr : parser(term -> term) = 
+      choice($list(
+        const(kw("-"), lam(m) => Op1(Neg(), m)),
+        const(kw("!"), lam(m) => Op1(Not(), m)),
+        return(lam(m) => m)))
+  in
+    bind(opr, lam(f)=>
+    bind(term1_parser(), lam(m) =>
+    return(f m)))
+  end
+
+  implement term3_parser() = let
+    val opr : parser((term, term) -<cloref1> term) = 
+      alt(const(kw("*"), lam(m, n) =<cloref1> Op2(Mul(), m, n)),
+          const(kw("/"), lam(m, n) =<cloref1> Op2(Div(), m, n)))
+  in
+    chainl(term2_parser(), opr)
+  end
+
+  implement term4_parser() = let
+    val opr : parser((term, term) -<cloref1> term) = 
+      alt(const(kw("+"), lam(m, n) =<cloref1> Op2(Add(), m, n)),
+          const(kw("-"), lam(m, n) =<cloref1> Op2(Sub(), m, n)))
+  in
+    chainl(term3_parser(), opr)
+  end
+
+  implement term5_parser() = let
+    val opr : parser((term, term) -<cloref1> term) = 
+      choice($list(
+        const(kw("<="), lam(m, n) =<cloref1> Op2(Lte(), m, n)),
+        const(kw(">="), lam(m, n) =<cloref1> Op2(Gte(), m, n)),
+        const(kw("<"), lam(m, n) =<cloref1> Op2(Lt(), m, n)),
+        const(kw(">"), lam(m, n) =<cloref1> Op2(Gt(), m, n))))
+  in
+    chainl(term4_parser(), opr)
+  end
+
+  implement term6_parser() = let
+    val opr : parser((term, term) -<cloref1> term) = 
+      alt(const(kw("=="), lam(m, n) =<cloref1> Op2(Eq(), m, n)),
+          const(kw("!="), lam(m, n) =<cloref1> Op2(Neq(), m, n)))
+  in
+    chainl(term5_parser(), opr)
+  end
+
+  implement term7_parser() = let
+    val opr : parser((term, term) -<cloref1> term) = 
+      alt(const(kw("&&"), lam(m, n) =<cloref1> Op2(And(), m, n)),
+          const(kw("||"), lam(m, n) =<cloref1> Op2(Or(), m, n)))
+  in
+    chainl(term6_parser(), opr)
+  end
+
+  implement term_parser() = 
+    bind(return(unit()), lam(_) => term7_parser())
 end

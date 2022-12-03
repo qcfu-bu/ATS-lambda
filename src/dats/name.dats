@@ -1,17 +1,18 @@
 #include "share/atspre_staload.hats"
 #staload "./../sats/types.sats"
 #staload "./../sats/name.sats"
+#staload "libats/SATS/hashfun.sats"
+#staload _ = "libats/DATS/hashfun.dats"
+#staload UN = "prelude/SATS/unsafe.sats"
 
 local
-  assume name_flt = @(string, int)
-  val stamp = ref<int>1
+  assume name_flt = @(string, ulint)
 in
-  implement mk_name(str) = let 
-    val id = stamp[]
-    val _ = stamp[] := id + 1
-  in
-    (str, id)
-  end
+  fun hash_key(k: string) =
+    string_hash_multiplier (31UL, 31415926536UL, k)
+
+  implement mk_name(str) =
+    (str, hash_key(str))
 
   implement eq_name(x1, x2) = let
     val (_, id1) = x1 
@@ -33,7 +34,7 @@ in
   end
 
   implement gcompare_val_val<name>(x, y) =
-    id_of_name(x) - id_of_name(y)
+    $UN.cast{int}(id_of_name(x) - id_of_name(y))
 
   implement fprint_val<name> = fprint_name
   implement fprint_name(out, x) = fprint!(out, string_of_name(x))

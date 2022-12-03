@@ -2,7 +2,7 @@
 
 fun mk_name(string): name
 fun eq_name(name, name): bool
-fun id_of_name(name):<> INV(int)
+fun id_of_name(name):<> INV(ulint)
 fun string_of_name(name): string
 
 fun fprint_name(FILEref, name): void
