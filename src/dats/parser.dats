@@ -9,7 +9,7 @@
 #staload _ = "./name.dats"
 
 local
-  fun reserved(): List(string) = $list{string}(
+  fun reserved(): List(string) = $list(
     "fun", "let", "rec", "in", "if", 
     "then", "else", "true", "false")
 in
