@@ -1,4 +1,4 @@
-abst@ype name_flt
+abst0ype name_flt
 typedef name = name_flt
 
 abstype nmap_boxed(a : type)

@@ -21,12 +21,10 @@ implement main0(argc, argv) =
       val buf = streamize_fileref_char(fp)
     in
       case run_parser(seqr(ws(), term_parser()), buf) of
-      | ~Some_vt m => let 
-          val _ = println!("ParseOk(", m, ")")
-          val _ = println!("TreeWalk(", run_tree(m),")")
-        in 
+      | ~Some_vt m => begin
+          println!("ParseOk(", m, ")");
+          println!("TreeWalk(", run_tree(m),")") 
         end
       | ~None_vt _ => println!("ParseError")
     end
-  else
-    println!("name of file expected")
+  else println!("name of file expected")
