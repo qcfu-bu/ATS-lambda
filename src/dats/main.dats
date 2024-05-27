@@ -17,14 +17,13 @@
 
 implement main0(argc, argv) = 
   if 2 <= argc then let 
-      val fp = fileref_open_exn(argv[1], file_mode_r) 
-      val buf = streamize_fileref_char(fp)
-    in
-      case run_parser(seqr(ws(), term_parser()), buf) of
-      | ~Some_vt m => begin
-          println!("ParseOk(", m, ")");
-          println!("TreeWalk(", run_tree(m),")") 
-        end
-      | ~None_vt _ => println!("ParseError")
+    val fp = fileref_open_exn(argv[1], file_mode_r) 
+    val buf = streamize_fileref_char(fp)
+  in
+    case run_parser(seqr(ws(), term_parser()), buf) of
+    | ~Some_vt m => begin
+      println!("ParseOk(", m, ")");
+      println!("TreeWalk(", run_tree(m),")") 
     end
-  else println!("name of file expected")
+    | ~None_vt _ => println!("ParseError")
+  end else println!("name of file expected")
