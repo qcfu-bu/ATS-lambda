@@ -26,6 +26,12 @@ fn box_apply{a,b:type}(f: a -<cloref1> b, a: box_t(a)): box_t(b)
 fn box_apply2{a,b,c:type}(f: (a, b) -<cloref1> c, a: box_t(a), b: box_t(b)): box_t(c)
 fn box_apply3{a,b,c,d:type}(f: (a, b, c) -<cloref1> d, a: box_t(a), b: box_t(b), c: box_t(c)): box_t(d)
 fn box_apply4{a,b,c,d,e:type}(f: (a, b, c, d) -<cloref1> e, a: box_t(a), b: box_t(b), c: box_t(c), d: box_t(d)): box_t(e)
+fn box_pair{a,b:type}(x: box_t(a), y: box_t(b)): box_t('(a, b))
+fn box_triple{a,b,c:type}(x: box_t(a), y: box_t(b), z: box_t(c)): box_t('(a, b, c))
+fn box_opt0{a:type}(o: option0(box_t(a))): box_t(option0(a))
+fn box_opt{a:type}(o: Option(box_t(a))): box_t(Option(a))
+fn box_opt_vt{a:type}(o: Option_vt(box_t(a))): box_t(Option(a))
+fn unbox{a:type}(b: box_t(a)): a
 
 
 fun new_var{a:type}(mkfree: mkfree(a), name: string): var_t(a)

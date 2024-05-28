@@ -44,13 +44,13 @@ DATSDIR=src/dats
 
 # Linking libraries
 INCLUDE:=
-LIBRARY:=mimalloc/out/release/mimalloc.o
+# LIBRARY:=mimalloc/out/release/mimalloc.o
 
 # C compiler flags
-# CFLAGS=-g
+CFLAGS=-g
 # CFLAGS=-g
 # CFLAGS=-g -O
-CFLAGS=-g -O3 -flto
+# CFLAGS=-g -O3 -flto
 
 # Memory allocator mode (none, libc, Bohem-gc)
 # GCFLAG=
