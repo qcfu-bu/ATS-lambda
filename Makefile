@@ -64,7 +64,7 @@ LIBGC=
 # Command-line Tools ####################################################
 
 # C compiler
-CC=gcc
+CC=clang
 
 # ATS compiler
 PATSCC=patscc

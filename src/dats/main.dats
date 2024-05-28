@@ -66,14 +66,20 @@ implement main0() = let
       println!("mk_var(", name_of(x), ")");
       Var(x)
     end, s)
-  fun _Var(x: var_t(expr)): box_t(expr) = box_var(x)
-  fun _App(m: box_t(expr), n: box_t(expr)): box_t(expr) = 
-    box_apply2(lam(m, n) => App(m, n), m, n)
+  fun _Var(x: var_t(expr)):<cloref1> box_t(expr) = box_var(x)
+  fun _App(m: box_t(expr), n: box_t(expr)):<cloref1> box_t(expr) = begin
+    println!("_App");
+    box_apply2(lam(m, n) => begin
+      App(m, n)
+    end, m, n)
+  end
   val x = mk_var("x") 
   val y = mk_var("y") 
+  val z = mk_var("z") 
+  val _ = println!(name_of(x))
   val _ = println!(name_of(x))
   val _ = println!(name_of(y))
-  val m = _Var(x)
+  val m = _App(_Var(x), _Var(y))
   val m = unbox(m)
-in
+in println!(m)
 end

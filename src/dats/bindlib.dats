@@ -123,7 +123,7 @@ fn app_closure{a,b:type}(clf: closure(a -<cloref1> b), a: a): closure(b) =
   lam(vs, env) => clf(vs, env)(a)
 
 fn comp_closure{a,b:type}(clf: closure(a -<cloref1> b), cla: closure(a)): closure(b) =
-  lam(vs, env) => clf(vs, env)(cla(vs, env))
+  lam(vs, env) =<cloref1> clf(vs, env)(cla(vs, env))
 
 (* Box and variable representation ******************************************)
 
@@ -160,10 +160,34 @@ and var_type(a:type) =
 
 (* Variable of any type (using an existential). *)
 and any_var =
-  | V of [a:type](lazy(var_t(a)))
+  | V of [a:type](ref(var_t(a)))
 
 assume box_boxed(a) = box_type(a)
 assume var_boxed(a) = var_type(a)
+
+extern fun fprint_var{a:type}(out: FILEref, m: var_t(a)): void
+extern fun print_var{a:type}(x: var_t(a)): void
+extern fun prerr_var{a:type}(x: var_t(a)): void
+overload fprint with fprint_var
+overload print with print_var
+overload prerr with prerr_var
+
+implement(a) fprint_val<var_t(a)>(out, x) = fprint_var(out, x)
+implement print_var(x) = fprint_var(stdout_ref, x)
+implement prerr_var(x) = fprint_var(stderr_ref, x)
+implement fprint_var(out, x) = fprint!(out, name_of(x), "$", uid_of(x))
+
+extern fun fprint_any_var(out: FILEref, m: any_var): void
+extern fun print_any_var(x: any_var): void
+extern fun prerr_any_var(x: any_var): void
+overload fprint with fprint_any_var
+overload print with print_any_var
+overload prerr with prerr_any_var
+
+implement fprint_val<any_var>(out, x) = fprint_any_var(out, x)
+implement print_any_var(x) = fprint_any_var(stdout_ref, x)
+implement prerr_any_var(x) = fprint_any_var(stderr_ref, x)
+implement fprint_any_var(out, V(x)) = fprint!(out, name_of(!x), "$", uid_of(!x))
 
 (* var_t methods *)
 implement name_of(var_struct(x)) = x.var_name
@@ -186,13 +210,14 @@ fn merge_uniq(
   l1: list0(any_var), 
   l2: list0(any_var)
 ): list0(any_var) = let
-  fun merge_uniq(acc, l1: list0(any_var), l2: list0(any_var)) = 
+  fun merge_uniq(acc: list0(any_var), l1: list0(any_var), l2: list0(any_var)): list0(any_var) = begin
+    println!("merge_uniq(acc: ", acc ," l1: ", l1, ", l2: ", l2, ")");
     case (l1, l2) of
-    | (nil0(), _) => list0_revapp(acc, l2)
-    | (_, nil0()) => list0_revapp(acc, l1)
-    | (vx as V(x) :: xs, vy as V(y) :: ys) => let
-      val x = lazy_force(x)
-      val y = lazy_force(y)
+    | (nil0(), _) => list0_reverse_append(acc, l2)
+    | (_, nil0()) => list0_reverse_append(acc, l1)
+    | ((vx as V(x)) :: xs, (vy as V(y)) :: ys) => let
+      val x = !x
+      val y = !y
     in
       if uid_of(x) = uid_of(y) 
       then merge_uniq(vx :: acc, xs, ys)
@@ -200,16 +225,20 @@ fn merge_uniq(
       then merge_uniq(vx :: acc, xs, l2)
       else merge_uniq(vy :: acc, l1, ys)
     end
-in
-  merge_uniq(list0_nil, l1, l2)
+  end
+  val res = merge_uniq(nil0, l1, l2)
+  val _ = println!("merge_uniq_res(", res, ")") 
+in 
+  res
 end
 
 fn remove{a:type}(x: var_t(a), xs: list0(any_var)): list0(any_var) = let
+  val _ = println!("remove(", name_of(x), ")")
   val var_key = uid_of(x)
   fun remove(acc, xs: list0(any_var)) =
     case xs of
-    | v as V(x) :: l when uid_of(lazy_force(x)) < var_key => remove(v :: acc, l)
-    | V(x) :: l when uid_of(lazy_force(x)) = var_key => list0_revapp(acc, l)
+    | v as V(x) :: l when uid_of(!x) < var_key => remove(v :: acc, l)
+    | V(x) :: l when uid_of(!x) = var_key => list0_revapp(acc, l)
     | _ => $raise Not_found
 in
   remove(nil0, xs)
@@ -245,8 +274,15 @@ end
    environment with [n] extra slots. *)
 
 fn minimize{a:type}(vs: list0(any_var), n: size_t, t: closure(a)): closure(a) =
-  if n = 0 then t
-  else lam(vp, env) => let
+begin
+  println!("minimize");
+  if n = 0 then begin
+    println!("minimize_true");
+    t
+  end
+  else begin
+  println!("minimize_false");
+  lam(vp, env) => let
     val size = vs.length()
     val tab = array0_make_elt<size_t>(size, g0int2uint(0))
     var pr1: bool with pf1 = true
@@ -257,7 +293,7 @@ fn minimize{a:type}(vs: list0(any_var), n: size_t, t: closure(a)): closure(a) =
     ): void =
       case vs of
       | V(x) :: vs => let
-        val x = lazy_force(x)
+        val x = !x
         val j = varpos_find(vp, uid_of(x))
         val _ = if i != j then !pr1 := false
         val _ = tab[i] := j
@@ -274,35 +310,44 @@ fn minimize{a:type}(vs: list0(any_var), n: size_t, t: closure(a)): closure(a) =
     then minimize_aux_prefix(g1int2uint(size), n, t1, env)
     else minimize_aux(tab, n, t1, env)
   end
+end
+end
 
 implement box(t) = Box(t)
 
-implement apply_box(f, a) = case (f, a) of
+implement apply_box(f, a) = begin
+  println!("apply_box");
+  case (f, a) of
   | (Box(f), Box(a)) => Box(f(a))
   | (Box(f), Env(va, na, ta)) => Env(va, na, map_closure(f, ta))
   | (Env(vf, nf, tf), Box(a)) => Env(vf, nf, app_closure(tf, a))
   | (Env(vf, nf, tf), Env(va, na, ta)) =>
     Env(merge_uniq(vf, va), g0int2uint(0), 
         comp_closure(minimize(vf, nf, tf), minimize(va, na, ta)))
+end
 
 implement occur(v, b) =
   case b of
   | Box(_) => false
   | Env(vs, _, _) => 
-    list0_exists(vs, lam(V(x)) => uid_of(lazy_force(x)) = uid_of(v))
+    list0_exists(vs, lam(V(x)) => uid_of(!x) = uid_of(v))
 
 implement is_closed(b) =
   case b of
   | Box(_) => true
   | Env(_, _, _) => false
 
-implement box_apply(f, a) =
+implement box_apply(f, a) = begin
+  println!("box_apply");
   case a of
   | Box(a) => Box(f(a))
   | Env(vs, na, ta) => Env(vs, na, map_closure(f, ta))
+end
 
-implement box_apply2(f, ta, tb) = 
+implement box_apply2(f, ta, tb) = begin
+  println!("box_apply2");
   apply_box(box_apply(lam(a)(b) => f(a, b), ta), tb)
+end
 
 implement box_apply3(f, ta, tb, tc) = 
   apply_box(box_apply2(lam(a, b)(c) => f(a, b, c), ta, tb), tc)
@@ -338,6 +383,7 @@ implement unbox(b) =
     val nbvs = g1int2uint(vs.length())
     val env = env_create(nbvs, nbvs + nb)
     val _ = println!("unboxing(nbvs: ", nbvs, ", nb: ", nb,  ")")
+    val _ = println!("unboxing(vs: ", vs,  ")")
     var vp1: varpos with pf = varpos_empty()
     fun loop{l:addr}(
       pf: !varpos@l
@@ -345,7 +391,10 @@ implement unbox(b) =
     ): void = 
       case vs of
       | V(v) :: vs => let
-        val v = lazy_force(v)
+        val _ = println!("unbox_loop");
+        val v = !v
+        val _ = println!("try_mk_free(", name_of(v), ")")
+        val _ = println!("unbox_loop");
         val var_struct(x) = v
         val _ = println!("try_mk_free(", name_of(v), ")")
         val mk_free = x.var_mkfree
@@ -365,49 +414,26 @@ implement unbox(b) =
     t(vp1, env)
   end
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// fn build_var_aux{a:type}(key:int)(vp: varpos, env: env): a = let
-//   val _ = println!("build_var_aux(", key, ")")
-// in
-// end
+fn build_var_aux{a:type}(key:int)(vp: varpos, env: env): a =
+  env_get(varpos_find(vp, key) , env)
 
 fn build_var{a:type}(
   var_key: int, 
   var_mkfree: var_t(a) -<cloref1> a, 
   name: string
 ): var_t(a) = let
-  val rec x: lazy(var_t(a)) = $delay let 
-    val _ = println!("build_var(", var_key, ")")
-    val var_box = 
-      Env(V(x) :: nil0, g0int2uint(0), lam(vp, env) => let 
-        val _ = println!("ok")
-      in
-        env_get(varpos_find(vp, var_key) , env)
-      end)
-  in 
+  val r: ref(var_t(a)) = ref($UN.cast(0))
+  val x: var_t(a) = 
     var_struct @{ 
       var_key= var_key, 
       var_name= name, 
       var_mkfree= var_mkfree, 
-      var_box= var_box
+      var_box= Env(V(r) :: nil0, g0int2uint(0), build_var_aux(var_key))
     }
-  end
+  val _ = !r := x
+  val _ = println!("build_var(", name_of(x), ")")
 in
-  lazy_force(x)
+  x
 end
 
 implement new_var(mkfree, name) = build_var(fresh_key(), mkfree, name)
