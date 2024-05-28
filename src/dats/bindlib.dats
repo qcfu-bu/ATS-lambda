@@ -165,30 +165,6 @@ and any_var =
 assume box_boxed(a) = box_type(a)
 assume var_boxed(a) = var_type(a)
 
-extern fun fprint_var{a:type}(out: FILEref, m: var_t(a)): void
-extern fun print_var{a:type}(x: var_t(a)): void
-extern fun prerr_var{a:type}(x: var_t(a)): void
-overload fprint with fprint_var
-overload print with print_var
-overload prerr with prerr_var
-
-implement(a) fprint_val<var_t(a)>(out, x) = fprint_var(out, x)
-implement print_var(x) = fprint_var(stdout_ref, x)
-implement prerr_var(x) = fprint_var(stderr_ref, x)
-implement fprint_var(out, x) = fprint!(out, name_of(x), "$", uid_of(x))
-
-extern fun fprint_any_var(out: FILEref, m: any_var): void
-extern fun print_any_var(x: any_var): void
-extern fun prerr_any_var(x: any_var): void
-overload fprint with fprint_any_var
-overload print with print_any_var
-overload prerr with prerr_any_var
-
-implement fprint_val<any_var>(out, x) = fprint_any_var(out, x)
-implement print_any_var(x) = fprint_any_var(stdout_ref, x)
-implement prerr_any_var(x) = fprint_any_var(stderr_ref, x)
-implement fprint_any_var(out, V(x)) = fprint!(out, name_of(!x), "$", uid_of(!x))
-
 (* var_t methods *)
 implement name_of(var_struct(x)) = x.var_name
 implement box_var(var_struct(x)) = x.var_box
@@ -196,7 +172,12 @@ implement compare_vars(var_struct(x), var_struct(y)) = y.var_key - x.var_key
 implement eq_vars(var_struct(x), var_struct(y)) = x.var_key = y.var_key
 implement uid_of(var_struct(x)) = x.var_key
 
+implement print_var(x) = fprint_var(stdout_ref, x)
+implement prerr_var(x) = fprint_var(stderr_ref, x)
+implement fprint_var(out, x) = fprint!(out, name_of(x), "$", uid_of(x))
+
 implement(a) gcompare_val_val<var_t(a)>(x, y) = $effmask_all(compare_vars(x, y))
+implement(a) fprint_val<var_t(a)>(out, x) = fprint_var(out, x)
 
 (* mvar_t methods *)
 implement names_of(xs) = array0_map(xs, lam(x) => name_of(x))
@@ -210,8 +191,11 @@ fn merge_uniq(
   l1: list0(any_var), 
   l2: list0(any_var)
 ): list0(any_var) = let
-  fun merge_uniq(acc: list0(any_var), l1: list0(any_var), l2: list0(any_var)): list0(any_var) = begin
-    println!("merge_uniq(acc: ", acc ," l1: ", l1, ", l2: ", l2, ")");
+  fun merge_uniq(
+    acc: list0(any_var), 
+    l1: list0(any_var), 
+    l2: list0(any_var)
+  ): list0(any_var) =
     case (l1, l2) of
     | (nil0(), _) => list0_reverse_append(acc, l2)
     | (_, nil0()) => list0_reverse_append(acc, l1)
@@ -225,21 +209,16 @@ fn merge_uniq(
       then merge_uniq(vx :: acc, xs, l2)
       else merge_uniq(vy :: acc, l1, ys)
     end
-  end
-  val res = merge_uniq(nil0, l1, l2)
-  val _ = println!("merge_uniq_res(", res, ")") 
-in 
-  res
+in merge_uniq(nil0, l1, l2)
 end
 
 fn remove{a:type}(x: var_t(a), xs: list0(any_var)): list0(any_var) = let
-  val _ = println!("remove(", name_of(x), ")")
   val var_key = uid_of(x)
   fun remove(acc, xs: list0(any_var)) =
     case xs of
     | v as V(x) :: l when uid_of(!x) < var_key => remove(v :: acc, l)
     | V(x) :: l when uid_of(!x) = var_key => list0_revapp(acc, l)
-    | _ => $raise Not_found
+    | _ => $raise Not_found 
 in
   remove(nil0, xs)
 end
@@ -274,15 +253,8 @@ end
    environment with [n] extra slots. *)
 
 fn minimize{a:type}(vs: list0(any_var), n: size_t, t: closure(a)): closure(a) =
-begin
-  println!("minimize");
-  if n = 0 then begin
-    println!("minimize_true");
-    t
-  end
-  else begin
-  println!("minimize_false");
-  lam(vp, env) => let
+  if n = 0 then t
+  else lam(vp, env) => let
     val size = vs.length()
     val tab = array0_make_elt<size_t>(size, g0int2uint(0))
     var pr1: bool with pf1 = true
@@ -310,13 +282,10 @@ begin
     then minimize_aux_prefix(g1int2uint(size), n, t1, env)
     else minimize_aux(tab, n, t1, env)
   end
-end
-end
 
 implement box(t) = Box(t)
 
-implement apply_box(f, a) = begin
-  println!("apply_box");
+implement apply_box(f, a) =
   case (f, a) of
   | (Box(f), Box(a)) => Box(f(a))
   | (Box(f), Env(va, na, ta)) => Env(va, na, map_closure(f, ta))
@@ -324,7 +293,6 @@ implement apply_box(f, a) = begin
   | (Env(vf, nf, tf), Env(va, na, ta)) =>
     Env(merge_uniq(vf, va), g0int2uint(0), 
         comp_closure(minimize(vf, nf, tf), minimize(va, na, ta)))
-end
 
 implement occur(v, b) =
   case b of
@@ -337,17 +305,13 @@ implement is_closed(b) =
   | Box(_) => true
   | Env(_, _, _) => false
 
-implement box_apply(f, a) = begin
-  println!("box_apply");
+implement box_apply(f, a) =
   case a of
   | Box(a) => Box(f(a))
   | Env(vs, na, ta) => Env(vs, na, map_closure(f, ta))
-end
 
-implement box_apply2(f, ta, tb) = begin
-  println!("box_apply2");
+implement box_apply2(f, ta, tb) =
   apply_box(box_apply(lam(a)(b) => f(a, b), ta), tb)
-end
 
 implement box_apply3(f, ta, tb, tc) = 
   apply_box(box_apply2(lam(a, b)(c) => f(a, b, c), ta, tb), tc)
@@ -382,8 +346,6 @@ implement unbox(b) =
   | Env(vs, nb, t) => let
     val nbvs = g1int2uint(vs.length())
     val env = env_create(nbvs, nbvs + nb)
-    val _ = println!("unboxing(nbvs: ", nbvs, ", nb: ", nb,  ")")
-    val _ = println!("unboxing(vs: ", vs,  ")")
     var vp1: varpos with pf = varpos_empty()
     fun loop{l:addr}(
       pf: !varpos@l
@@ -391,28 +353,19 @@ implement unbox(b) =
     ): void = 
       case vs of
       | V(v) :: vs => let
-        val _ = println!("unbox_loop");
         val v = !v
-        val _ = println!("try_mk_free(", name_of(v), ")")
-        val _ = println!("unbox_loop");
         val var_struct(x) = v
-        val _ = println!("try_mk_free(", name_of(v), ")")
         val mk_free = x.var_mkfree
         val v1 = mk_free(v)
-        val _ = println!("mk_free")
       in
         env_set(env, cur, v1);
-        println!("unboxing_env_set");
         !vp1 := varpos_insert(!vp1, x.var_key, cur);
-        println!("unboxing_vp1_set");
         loop(pf | cur + 1, vs, vp1)
       end
       | nil0 => ()
     val _ = loop(pf | g0int2uint(0), vs, addr@vp1)
-  in
-    println!("unbox_looped");
-    t(vp1, env)
-  end
+    in t(vp1, env)
+    end
 
 fn build_var_aux{a:type}(key:int)(vp: varpos, env: env): a =
   env_get(varpos_find(vp, key) , env)
@@ -431,9 +384,9 @@ fn build_var{a:type}(
       var_box= Env(V(r) :: nil0, g0int2uint(0), build_var_aux(var_key))
     }
   val _ = !r := x
-  val _ = println!("build_var(", name_of(x), ")")
-in
-  x
+in 
+  x 
 end
 
-implement new_var(mkfree, name) = build_var(fresh_key(), mkfree, name)
+implement new_var(mkfree, name) = 
+  build_var(fresh_key(), mkfree, name)

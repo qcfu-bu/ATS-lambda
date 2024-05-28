@@ -44,7 +44,7 @@ implement prerr_expr(m) = fprint_expr(stderr_ref, m)
 
 implement fprint_expr(out: FILEref, m: expr): void =
   case m of
-  | Var(x) => fprint!(out, name_of(x))
+  | Var(x) => fprint!(out, x)
   | App(m, n) => fprint!(out, "App(", m, ", ", n, ")")
 
 
@@ -62,23 +62,13 @@ implement fprint_expr(out: FILEref, m: expr): void =
 //   end else println!("name of file expected")
 
 implement main0() = let
-  fun mk_var(s): var_t(expr) = new_var(lam(x) =<cloref1> begin 
-      println!("mk_var(", name_of(x), ")");
-      Var(x)
-    end, s)
-  fun _Var(x: var_t(expr)):<cloref1> box_t(expr) = box_var(x)
-  fun _App(m: box_t(expr), n: box_t(expr)):<cloref1> box_t(expr) = begin
-    println!("_App");
-    box_apply2(lam(m, n) => begin
-      App(m, n)
-    end, m, n)
-  end
+  fun mk_var(s): var_t(expr) = new_var(lam(x) => Var(x), s)
+  fun _Var(x: var_t(expr)): box_t(expr) = box_var(x)
+  fun _App(m: box_t(expr), n: box_t(expr)): box_t(expr) =
+    box_apply2(lam(m, n) => App(m, n), m, n)
   val x = mk_var("x") 
   val y = mk_var("y") 
   val z = mk_var("z") 
-  val _ = println!(name_of(x))
-  val _ = println!(name_of(x))
-  val _ = println!(name_of(y))
   val m = _App(_Var(x), _Var(y))
   val m = unbox(m)
 in println!(m)

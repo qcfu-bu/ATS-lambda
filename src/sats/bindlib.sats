@@ -13,6 +13,14 @@ fn compare_vars{a:type}(x: var_t(a), y: var_t(a)): int
 fn eq_vars{a:type}(x: var_t(a), y: var_t(a)): bool
 fn uid_of{a:type}(x: var_t(a)): int
 
+fn fprint_var{a:type}(out: FILEref, m: var_t(a)): void
+fn print_var{a:type}(x: var_t(a)): void
+fn prerr_var{a:type}(x: var_t(a)): void
+
+overload fprint with fprint_var
+overload print with print_var
+overload prerr with prerr_var
+
 typedef mvar_t(a:type) = array0(var_t(a))
 
 fn names_of{a:type}(xs: mvar_t(a)): array0(string)
