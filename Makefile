@@ -44,22 +44,22 @@ DATSDIR=src/dats
 
 # Linking libraries
 INCLUDE:=
-LIBRARY:=
+LIBRARY:=mimalloc/out/release/mimalloc.o
 
 # C compiler flags
 # CFLAGS=-g
 # CFLAGS=-g
 # CFLAGS=-g -O
-CFLAGS=-g -O2
+CFLAGS=-g -O3
 
 # Memory allocator mode (none, libc, Bohem-gc)
 # GCFLAG=
-# GCFLAG=-DATS_MEMALLOC_LIBC
-GCFLAG=-DATS_MEMALLOC_GCBDW
+GCFLAG=-DATS_MEMALLOC_LIBC
+# GCFLAG=-DATS_MEMALLOC_GCBDW
 
 # Garbarge collection mode (only applies if memory allocation is Bohem-gc)
-# LIBGC=
-LIBGC=-lgc
+LIBGC=
+# LIBGC=-lgc
 
 # Command-line Tools ####################################################
 
@@ -100,8 +100,8 @@ $(shell mkdir -p $(BUILD))
 
 build/bin/$(PROJECT) : \
 $(OBJSATS) $(OBJDATS) ; \
-$(PATSCC) -o $@ \
-$(INCLUDE) $(GCFLAG) $^ $(LIBGC) $(LIBRARY)
+$(CC) -o $@ \
+$(INCLUDE)  $(LIBRARY) $(CFLAGS) $(GCFLAG) $^ $(LIBGC)
 
 build/src/%_sats.c: \
 $(SATSDIR)/%.sats ; $(PATSOPT) -o $@ --static $<

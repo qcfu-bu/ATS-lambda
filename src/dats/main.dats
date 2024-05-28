@@ -1,4 +1,7 @@
+// header
 #include "share/atspre_staload.hats"
+
+// statics
 #staload "./../sats/types.sats"
 #staload "./../sats/value.sats"
 #staload "./../sats/tree.sats"
@@ -6,14 +9,22 @@
 #staload "./../sats/parser.sats"
 #staload "./../sats/term.sats"
 
+#staload "./../sats/bindlib.sats"
+
+// dynamics
+#staload _ = "./../dats/bindlib.dats"
 #staload _ = "./../dats/value.dats"
 #staload _ = "./../dats/tree.dats"
 #staload _ = "./../dats/parsec.dats"
 #staload _ = "./../dats/parser.dats"
 #staload _ = "./../dats/term.dats"
 
+#staload _ = "./../dats/bindlib.dats"
+
+// initialize
 #dynload "./../dats/name.dats"
 #dynload "./../dats/parsec.dats"
+#dynload "./../dats/bindlib.dats"
 
 implement main0(argc, argv) = 
   if 2 <= argc then let 
