@@ -122,7 +122,7 @@ fn map_closure{a,b:type}(f: a -<cloref1> b, cla: closure(a)): closure(b) =
 fn app_closure{a,b:type}(clf: closure(a -<cloref1> b), a: a): closure(b) =
   lam(vs, env) => clf(vs, env)(a)
 
-fn compose_closure{a,b:type}(clf: closure(a -<cloref1> b), cla: closure(a)): closure(b) =
+fn comp_closure{a,b:type}(clf: closure(a -<cloref1> b), cla: closure(a)): closure(b) =
   lam(vs, env) => clf(vs, env)(cla(vs, env))
 
 (* Box and variable representation ******************************************)
@@ -234,6 +234,10 @@ in
   t(new_env)
 end
 
+(* Function [minimize vs n cl] constructs a minimal closure equivalent to [cl]
+   and only containing variables of [vs]. Additionally, the function builds an
+   environment with [n] extra slots. *)
+
 fn minimize{a:type}(vs: list0(any_var), n: size_t, t: closure(a)): closure(a) =
   if n = 0 then t
   else lam(vp, env) => let
@@ -257,20 +261,33 @@ fn minimize{a:type}(vs: list0(any_var), n: size_t, t: closure(a)): closure(a) =
       | nil0() => ()
     val _ = loop(pf1, pf2 | g0int2uint(0), vs, addr@pr1, addr@vp1)
     val new_vp = vp1
-    val t = lam(env) =<cloref1> t(new_vp, env)
+    val t1 = lam(env: env) =<cloref1> t(new_vp, env)
   in
     if pr1
-    then minimize_aux_prefix(g1int2uint(size), n, t, env)
-    else minimize_aux(tab, n, t, env)
+    then minimize_aux_prefix(g1int2uint(size), n, t1, env)
+    else minimize_aux(tab, n, t1, env)
   end
 
+implement box(t) = Box(t)
 
+implement apply_box(f, a) =
+  case (f, a) of
+  | (Box(f), Box(a)) => Box(f(a))
+  | (Box(f), Env(va, na, ta)) => Env(va, na, map_closure(f, ta))
+  | (Env(vf, nf, tf), Box(a)) => Env(vf, nf, app_closure(tf, a))
+  | (Env(vf, nf, tf), Env(va, na, ta)) =>
+    Env(merge_uniq(vf, va), g0int2uint(0), 
+        comp_closure(minimize(vf, nf, tf), minimize(va, na, ta)))
 
+implement occur(v, b) =
+  case b of
+  | Box(_) => false
+  | Env(vs, _, _) => list0_exists(vs, lam(V(x)) => uid_of(x) = uid_of(v))
 
-
-
-
-
+implement is_closed(b) =
+  case b of
+  | Box(_) => true
+  | Env(_, _, _) => false
 
 
 
