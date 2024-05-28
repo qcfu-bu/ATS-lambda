@@ -1,23 +1,35 @@
+(** The [Bindlib] library provides support for free and bound variables in the
+    ATS2 language. The main application is the representation of types with a
+    binding structure (e.g., abstract syntax trees).
+
+    @author[ATS2]  Qiancheng Fu
+    @author[OCaml] Christophe Raffalli
+    @author[OCaml] Rodolphe Lepigre
+    @version 6.0.0 *)
+
 (* header *)
 #include "share/atspre_staload.hats"
 #include "share/atspre_staload_libats_ML.hats"
-#staload UN = "prelude/SATS/unsafe.sats"
 
 (* statics *)
+#staload UN = "prelude/SATS/unsafe.sats"
 #staload "./../sats/bindlib.sats"
 
-(* set list notation *)
+(* list notation *)
 #define :: list0_cons
 #define nil0 list0_nil 
+
+(* exception(s) *)
+exception Not_found
 
 (* Counter for generating fresh variable keys (i.e., unique identifiers). *)
 local 
 val c: ref(int) = ref(~1)
 in
-fun fresh_key(): int = begin
+fn fresh_key(): int = begin
   !c := !c + 1; !c
 end
-fun reset_counter(): void = !c := ~1
+fn reset_counter(): void = !c := ~1
 end
 
 (* A placeholder type for any boxed type. *)
@@ -31,20 +43,20 @@ typedef any = any_boxed
    potentially different types in a single array. *)
 
 abst@ype env
-extern fun create(next_free: int, size: int): env
-extern fun set{a:type}(env: env, i: int, e: a): void
-extern fun get{a:type}(i: int, env: env): a
-extern fun blit(src: env, dst: env, len: int): void
-extern fun copy(env: env): env
-extern fun get_next_free(env: env): int
-extern fun set_next_free(env: env, n: int): void
+extern fn create(next_free: size_t, size: size_t): env
+extern fn set{a:type}(env: env, i: size_t, e: a): void
+extern fn get{a:type}(i: size_t, env: env): a
+extern fn blit(src: env, dst: env, len: size_t): void
+extern fn copy(env: env): env
+extern fn get_next_free(env: env): size_t
+extern fn set_next_free(env: env, n: size_t): void
 
 local
-assume env = @{ tab= array0(any), next_free= ref(int) }
+assume env = @{ tab= array0(any), next_free= ref(size_t) }
 in
 implement create(next_free, size) = @{
-  tab= array0_make_elt<any>(g0int2uint_int_size(size), $UN.cast{any}(0)), 
-  next_free= ref<int>(next_free)
+  tab= array0_make_elt<any>(size, $UN.cast{any}(0)), 
+  next_free= ref<size_t>(next_free)
 }
 
 implement set(env, i, e) = let
@@ -64,7 +76,7 @@ implement blit(src, dst, len) = let
   val dst_tab = dst.tab
   implement intrange_foreach$fwork<void>(i, env) =
     dst_tab[i] := src_tab[i]; 
-  val _ = intrange_foreach(0, len)
+  val _ = intrange_foreach(0, g0uint2int(len))
 in end
 
 implement copy(env) = let 
@@ -86,16 +98,31 @@ end
    using a map (of type [varpos]) which associates variable keys to indices in
    the environment. *)
 
-typedef varpos = map(int, int)
+typedef varpos = map(int, size_t)
 typedef closure(a: type) = (varpos, env) -<cloref1> a
 
-fun map_closure{a,b:type}(f: a -<cloref1> b, cla: closure(a)): closure(b) = 
+fn empty(): varpos = funmap_nil<>()
+
+fn insert(vp: varpos, i: int, x: size_t): varpos = let
+  var vp = vp
+in
+  case funmap_insert(vp, i, x) of
+  | ~Some_vt(_) => vp
+  | ~None_vt( ) => vp
+end
+
+fn find(vp: varpos, i: int): size_t =
+  case funmap_search(vp, i) of
+  | ~Some_vt(x) => x
+  | ~None_vt( ) => $raise Not_found
+
+fn map_closure{a,b:type}(f: a -<cloref1> b, cla: closure(a)): closure(b) = 
   lam(vs, env) => f(cla(vs, env))
 
-fun app_closure{a,b:type}(clf: closure(a -<cloref1> b), a: a): closure(b) =
+fn app_closure{a,b:type}(clf: closure(a -<cloref1> b), a: a): closure(b) =
   lam(vs, env) => clf(vs, env)(a)
 
-fun compose_closure{a,b:type}(clf: closure(a -<cloref1> b), cla: closure(a)): closure(b) =
+fn compose_closure{a,b:type}(clf: closure(a -<cloref1> b), cla: closure(a)): closure(b) =
   lam(vs, env) => clf(vs, env)(cla(vs, env))
 
 (* Box and variable representation ******************************************)
@@ -121,13 +148,13 @@ fun compose_closure{a,b:type}(clf: closure(a -<cloref1> b), cla: closure(a)): cl
 
 datatype box_type(a:type) =
   | Box of a 
-  | Env of (list0(any_var), int, closure(a))
+  | Env of (list0(any_var), size_t, closure(a))
 
 and var_type(a:type) = 
   var_struct of @{
     var_key= int, 
     var_name= string, 
-    var_mkfree= var_t(a) -<cloref1> a, 
+    var_mkfree= mkfree(a), 
     var_box= box_t(a)
   }
 
@@ -171,20 +198,115 @@ in
   merge_uniq(list0_nil, l1, l2)
 end
 
-exception Not_found
+fn remove{a:type}(x: var_t(a), xs: list0(any_var)): list0(any_var) = let
+  val var_key = uid_of(x)
+  fun remove(acc, xs: list0(any_var)) =
+    case xs of
+    | v as V(x) :: l when uid_of(x) < var_key => remove(v :: acc, l)
+    | V(x) :: l when uid_of(x) = var_key => list0_revapp(acc, l)
+    | _ => $raise Not_found
+in
+  remove(nil0, xs)
+end
 
-fun build_var_aux{a:type}(key:int)(vp: varpos, env: env): a =
-  case funmap_search<int,int>(vp, key) of
-  | ~Some_vt(i) => get(i, env)
-  | ~None_vt()  => $raise Not_found
+fn minimize_aux_prefix{a:type}(
+  size: size_t, 
+  n: size_t, 
+  t: env -<cloref1> a, 
+  env: env
+): a = let
+  val new_env = create(size, size + n)
+in
+  blit(env, new_env, size);
+  t(new_env)
+end
 
-fun build_var{a:type}(
+fn minimize_aux{a:type}(
+  tab: array0(size_t),
+  n: size_t,
+  t: env -<cloref1> a,
+  env: env
+): a = let
+  val size = tab.size()
+  val new_env = create(size, size + n)
+in
+  array0_iforeach(tab, lam(i, x) => set(new_env, i, get(x, env)));
+  t(new_env)
+end
+
+fn minimize{a:type}(vs: list0(any_var), n: size_t, t: closure(a)): closure(a) =
+  if n = 0 then t
+  else lam(vp, env) => let
+    val size = vs.length()
+    val tab = array0_make_elt<size_t>(size, g0int2uint(0))
+    var pr1: bool with pf1 = true
+    var vp1: varpos with pf2 = empty()
+    fun loop{l1,l2:addr}(
+      pf1: !bool@l1, pf2: !varpos@l2
+    | i: size_t, vs: list0(any_var), pr1: ptr(l1), vp1: ptr(l2)
+    ): void =
+      case vs of
+      | V(x) :: vs => let
+        val j = find(vp, uid_of(x))
+        val _ = if i != j then !pr1 := false
+        val _ = tab[i] := j
+        val _ = !vp1 := insert(!vp1, uid_of(x), i)
+      in
+        loop(pf1, pf2 | i + 1, vs, pr1, vp1)
+      end
+      | nil0() => ()
+    val _ = loop(pf1, pf2 | g0int2uint(0), vs, addr@pr1, addr@vp1)
+    val new_vp = vp1
+    val t = lam(env) =<cloref1> t(new_vp, env)
+  in
+    if pr1
+    then minimize_aux_prefix(g1int2uint(size), n, t, env)
+    else minimize_aux(tab, n, t, env)
+  end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+fn build_var_aux{a:type}(key:int)(vp: varpos, env: env): a =
+  get(find(vp, key) , env)
+
+fn build_var{a:type}(
   var_key: int, 
   var_mkfree: var_t(a) -<cloref1> a, 
   name: string
 ): var_t(a) = let
   val rec x: var_t(a) = let 
-    val var_box = Env(V(x) :: nil0, 0, build_var_aux(var_key))
+    val var_box = Env(V(x) :: nil0, g0int2uint(0), build_var_aux(var_key))
   in 
     var_struct @{ 
       var_key= var_key, 

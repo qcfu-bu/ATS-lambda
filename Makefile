@@ -50,7 +50,7 @@ LIBRARY:=mimalloc/out/release/mimalloc.o
 # CFLAGS=-g
 # CFLAGS=-g
 # CFLAGS=-g -O
-CFLAGS=-g -O3
+CFLAGS=-g -O3 -flto
 
 # Memory allocator mode (none, libc, Bohem-gc)
 # GCFLAG=
