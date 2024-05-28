@@ -26,15 +26,21 @@
 #dynload "./../dats/parsec.dats"
 #dynload "./../dats/bindlib.dats"
 
-implement main0(argc, argv) = 
-  if 2 <= argc then let 
-    val fp = fileref_open_exn(argv[1], file_mode_r) 
-    val buf = streamize_fileref_char(fp)
-  in
-    case run_parser(seqr(ws(), term_parser()), buf) of
-    | ~Some_vt m => begin
-      println!("ParseOk(", m, ")");
-      println!("TreeWalk(", run_tree(m),")") 
-    end
-    | ~None_vt _ => println!("ParseError")
-  end else println!("name of file expected")
+// implement main0(argc, argv) = 
+//   if 2 <= argc then let 
+//     val fp = fileref_open_exn(argv[1], file_mode_r) 
+//     val buf = streamize_fileref_char(fp)
+//   in
+//     case run_parser(seqr(ws(), term_parser()), buf) of
+//     | ~Some_vt m => begin
+//       println!("ParseOk(", m, ")");
+//       println!("TreeWalk(", run_tree(m),")") 
+//     end
+//     | ~None_vt _ => println!("ParseError")
+//   end else println!("name of file expected")
+
+implement main0() = let
+  val x = new_var(lam(_) => "", "x") 
+in
+  println!(name_of(x))
+end

@@ -2,12 +2,6 @@
 #staload "./../sats/parsec.sats"
 #staload UN = "prelude/SATS/unsafe.sats"
 
-implement{a}unwrap(box) = let
-  val Box(v) = box
-in
-  v
-end
-
 implement is_lower_case(c) = 'a' <= c && c <= 'z'
 implement is_upper_case(c) = 'A' <= c && c <= 'Z'
 implement is_alpha(c) = is_lower_case(c) || is_upper_case(c)
@@ -58,7 +52,7 @@ in
     $delay(lam(buf) =>
       case !buf of
       | stream_nil() => Err_vt()
-      | stream_cons(c, buf) => Ok_vt(Box(c), buf))
+      | stream_cons(c, buf) => Ok_vt('{ value= c }, buf))
 
   implement alt(p1, p2) =
     $delay(lam(buf) => let
@@ -76,7 +70,7 @@ in
 
   implement satisfy(f) =
     bind(read(), lam(c) =>
-      if f(c.unwrap()) then
+      if f(c.value) then
         return(c)
       else
         fail())
@@ -139,16 +133,16 @@ in
     satisfy(is_digit)
 
   implement nat() =
-    bind(many1(digit()), lam(xs : List1(BChar)) => let
-      val cs = list_vt2t(list_map<BChar><charNZ>(xs))
+    bind(many1(digit()), lam(xs : List1(Char)) => let
+      val cs = list_vt2t(list_map<Char><charNZ>(xs))
       val str = strnptr2string(string_make_list(cs))
       val i = g0string2int(str)
     in
-      return(Box(i))
+      return('{ value= i })
     end) 
   where {
-    implement list_map$fopr<BChar><charNZ>(x) = let
-      val c = g1ofg0(x.unwrap())
+    implement list_map$fopr<Char><charNZ>(x) = let
+      val c = g1ofg0(x.value)
     in
       if isneqz(c) then
         c

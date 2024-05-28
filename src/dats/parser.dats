@@ -15,7 +15,7 @@ local
 in
   implement int_parser() =
     bind(nat(), lam(x) => let
-      val n = x.unwrap()
+      val n = x.value
     in
       seql(return(Int(n)), ws())
     end)
@@ -25,9 +25,9 @@ in
         const(kw("false"), Bool(false)))
 
   implement var_parser() = 
-    bind(satisfy(is_alpha), lam(c: BChar) =>
+    bind(satisfy(is_alpha), lam(c: Char) =>
     bind(many(alt(satisfy(is_alphanum), alt(char('_'), char('\'')))), lam(cs)=> let
-      val cs = list_vt2t(list_map<BChar><charNZ>(list_cons(c, cs)))
+      val cs = list_vt2t(list_map<Char><charNZ>(list_cons(c, cs)))
       val str = string_make_list(cs)
       val str = strnptr2string(str)
       implement list_exists$pred<string>(x) = x = str
@@ -38,8 +38,8 @@ in
         seql(return(str), ws())
     end))
   where {
-    implement list_map$fopr<BChar><charNZ>(c) = let
-      val c = g1ofg0(c.unwrap())
+    implement list_map$fopr<Char><charNZ>(c) = let
+      val c = g1ofg0(c.value)
     in
       if isneqz(c) then
         c
