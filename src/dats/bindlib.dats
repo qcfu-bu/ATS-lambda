@@ -490,11 +490,10 @@ implement unmbind{a,_}(b) = let
   val mkfree = b.mb_mkfree
   val xs = array0_make_elt<var_t(a)>(arity, $UN.cast(0))
   val vs = array0_make_elt<a>(arity, $UN.cast(0))
-  fun loop(i: size_t) =
-    if i < arity then (
-      xs[i] := new_var(mkfree[i], names[i]);
-      vs[i] := mkfree[i](xs[i]);
-      loop(i + 1))
+  fun loop(i: size_t) = if i < arity then (
+    xs[i] := new_var(mkfree[i], names[i]);
+    vs[i] := mkfree[i](xs[i]);
+    loop(i + 1))
   val _ = loop(i2sz(0))
 in
   (xs, msubst(b, vs))
@@ -508,11 +507,10 @@ implement unmbind2{a,_}(b1, b2) = let
   val _ = if arity1 != arity2 then $raise Arity_mismatch
   val xs = array0_make_elt<var_t(a)>(arity1, $UN.cast(0))
   val vs = array0_make_elt<a>(arity1, $UN.cast(0))
-  fun loop(i: size_t) =
-    if i < arity1 then (
-      xs[i] := new_var(mkfree[i], names[i]);
-      vs[i] := mkfree[i](xs[i]);
-      loop(i + 1))
+  fun loop(i: size_t) = if i < arity1 then (
+    xs[i] := new_var(mkfree[i], names[i]);
+    vs[i] := mkfree[i](xs[i]);
+    loop(i + 1))
   val _ = loop(i2sz(0))
 in
   (xs, msubst(b1, vs), msubst(b2, vs))
@@ -663,21 +661,19 @@ fn bind_mvar_aux1{a,b:type}(
   m: size_t, 
   xs: mvar(a), 
   mb_binds: array0(bool),
-  t: cfun(env,b),
-  args: array0(a)
-): b = let
+  t: cfun(env,b)
+)(args: array0(a)): b = let
   val _ = check_arity(xs, args)
   val v = env_create(i2sz(0), m)
   val sz = xs.size()
   var pos: size_t with pf = i2sz(0)
   fun loop{l:addr}(
     pf: !size_t@l 
-  | i: size_t, pos: ptr(l)): void =
-    if i < sz then (
-      if mb_binds[i] then (
-        env_set(v, !pos, args[i]);  
-        !pos := !pos + 1);
-      loop(pf | i + 1, pos))
+  | i: size_t, pos: ptr(l)): void = if i < sz then (
+    if mb_binds[i] then (
+      env_set(v, !pos, args[i]);  
+      !pos := !pos + 1);
+    loop(pf | i + 1, pos))
   val _ = loop(pf | i2sz(0), addr@pos)
   val _ = env_set_next_free(v, pos)
 in
@@ -720,12 +716,11 @@ fn bind_mvar_aux4{a,b:type}(
   var cur_pos: size_t with pf = mb_rank 
   fun loop{l:addr}(
     pf: !size_t@l 
-  | i: size_t, cur_pos: ptr(l), env: env): void = 
-    if i < sz then (
-      if mb_binds[i] then (
-        env_set(env, !cur_pos, args[i]);
-        !cur_pos := !cur_pos + 1); 
-      loop(pf | i + 1, cur_pos, env))
+  | i: size_t, cur_pos: ptr(l), env: env): void = if i < sz then (
+    if mb_binds[i] then (
+      env_set(env, !cur_pos, args[i]);
+      !cur_pos := !cur_pos + 1); 
+    loop(pf | i + 1, cur_pos, env))
 in
   if next = mb_rank then let
     val _ = loop(pf | i2sz(0), addr@cur_pos, env)
@@ -779,5 +774,63 @@ in
     mb_value  = mb_value
   }
   end
-  | Env(vs, n, t) => _
+  | Env(vs, n, t) => let 
+    val sz = xs.size()
+    val keys: array0(int) = array0_map(xs, lam(x) => 0)
+    val vss = array0_map(xs, lam(x) => vs)
+    var vs: list0(any_var) with pf1 = vs
+    var m: size_t with pf2 = n
+    fun loop{l1,l2:addr}(
+      pf1: !list0(any_var)@l1, pf2: !size_t@l2
+    | i: int, vs: ptr(l1), m: ptr(l2)): void = if (0 <= i) then (
+      let
+        val v = xs[i]
+        val Var(x0) = v
+        val _ = try
+          !vs := remove(v, !vs);
+          !m := !m + 1;
+          keys[i] := x0.var_key
+        with ~Not_found() => keys[i] := ~1
+      in
+        vss[i] := !vs
+      end;
+      loop(pf1, pf2 | i - 1, vs, m))
+    val _ = loop(pf1, pf2 | sz2i(sz) - 1, addr@vs, addr@m)
+  in
+    case vs of
+    | nil0() => let
+      val mb_names = array0_map(xs, lam(x) => "")
+      val mb_binds = array0_map(xs, lam(x) => false)
+      var cur_pos: size_t with pf1 = i2sz(0)
+      var vp: varpos with pf2 = varpos_empty()
+      fun loop{l1,l2:addr}(
+        pf1: !size_t@l1, pf2: !varpos@l2
+      | i: size_t, cur_pos: ptr(l1), vp: ptr(l2)): void = if i < sz then (
+        let
+          val Var(x0) = xs[i]
+          val key = keys[i]
+        in
+          mb_names[i] := x0.var_name;
+          if key >= 0 then (
+            !vp := varpos_insert(!vp, key, !cur_pos);
+            !cur_pos := !cur_pos + 1;
+            mb_binds[i] := true)
+          else 
+            mb_binds[i] := false
+        end; loop(pf1, pf2 | i + 1, cur_pos, vp))
+      val _ = loop(pf1, pf2 | i2sz(0), addr@cur_pos, addr@vp)
+      val vp = vp
+      val t = lam(env: env) =<cloref1> t(vp, env)
+      val mb_value = bind_mvar_aux1(m, xs, mb_binds, t)
+    in Box '{
+      mb_names  = mb_names,
+      mb_binds  = mb_binds,
+      mb_rank   = i2sz(0),
+      mb_mkfree = mb_mkfree,
+      mb_value  = mb_value
+    }
+    end
+    | _ when m = n => _
+    | _ => _
+  end
 end
