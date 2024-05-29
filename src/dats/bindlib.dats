@@ -153,10 +153,10 @@ datatype box_type(a:type) =
 
 and var_type(a:type) = 
   Var of @{
-    var_key   = int, 
-    var_name  = string, 
-    var_mkfree= mkfree_t(a), 
-    var_box   = box_t(a)
+    var_key   = int,       (* Unique identifier.          *)
+    var_name  = string,    (* Name as a free variable.    *)
+    var_mkfree= mkfree(a), (* Function to build a term.   *)
+    var_box   = box(a)     (* Variable as a boxed object. *)
   }
 
 (* Variable of any type (using an existential). *)
@@ -375,11 +375,11 @@ implement unbox(b) =
 (* Representation of binders ************************************************)
 
 typedef binder_type(a,b) = '{
-  b_name  = string,      (* Preferred name for the bound variable. *)
-  b_bind  = bool,        (* Indicates whether the variable occurs. *)
-  b_rank  = size_t,      (* Number of remaining free variables.    *)
-  b_mkfree= mkfree_t(a), (* Injection of variables into domain.    *)
-  b_value = cfun(a,b)    (* Substitution function.                 *) 
+  b_name  = string,    (* Preferred name for the bound variable. *)
+  b_bind  = bool,      (* Indicates whether the variable occurs. *)
+  b_rank  = size_t,    (* Number of remaining free variables.    *)
+  b_mkfree= mkfree(a), (* Injection of variables into domain.    *)
+  b_value = cfun(a,b)  (* Substitution function.                 *) 
 }
 
 assume binder_type(a,b) = binder_type(a,b)
@@ -412,7 +412,7 @@ end
 
 fn build_var{a:type}(
   var_key: int, 
-  var_mkfree: mkfree_t(a), 
+  var_mkfree: mkfree(a), 
   name: string
 ): var_t(a) = let
   val _ = println!("build_var(", name, ")")
@@ -462,7 +462,7 @@ fn build_binder{a,b:type}(
   b_rank: size_t, 
   b_bind: bool, 
   b_value: cfun(a,b)
-): binder_t(a,b) = '{
+): binder(a,b) = '{
   b_name   = x.var_name,
   b_bind   = b_bind,
   b_rank   = b_rank,
@@ -508,7 +508,7 @@ fn bind_var_aux3{a,b:type}(
   rank: size_t,
   t: cfun(env, b),
   env: env
-): binder_t(a,b) =
+): binder(a,b) =
   build_binder(x, rank, true, bind_var_aux2(rank, t, env))
 
 fn bind_var_aux4{a,b:type}(
@@ -521,7 +521,7 @@ fn bind_var_aux5{a,b:type}(
   rank: size_t,
   t: cfun(env, b),
   env: env
-): binder_t(a,b) =
+): binder(a,b) =
   build_binder(x, rank, false, bind_var_aux4(t, env))
 
 implement bind_var(x, b) = let

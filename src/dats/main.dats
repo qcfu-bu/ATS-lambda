@@ -29,14 +29,14 @@
 
 datatype expr =
   | Var of var_t(expr)
-  | Lam of binder_t(expr, expr)
+  | Lam of binder(expr, expr)
   | App of (expr, expr)
 
 fun mk_var(s): var_t(expr) = new_var(lam(x) => Var(x), s)
-fun _Var(x: var_t(expr)): box_t(expr) = box_var(x)
-fun _App(m: box_t(expr), n: box_t(expr)): box_t(expr) =
+fun _Var(x: var_t(expr)): box(expr) = box_var(x)
+fun _App(m: box(expr), n: box(expr)): box(expr) =
   box_apply2(lam(m, n) => App(m, n), m, n)
-fun _Lam(b: box_t(binder_t(expr, expr))): box_t(expr) =
+fun _Lam(b: box(binder(expr, expr))): box(expr) =
   box_apply(lam(b) => Lam(b), b)
 
 
