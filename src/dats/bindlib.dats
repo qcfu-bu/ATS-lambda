@@ -21,6 +21,7 @@
 
 (* exception(s) *)
 exception Not_found
+exception Arity_mismatch
 
 (* Counter for generating fresh variable keys (i.e., unique identifiers). *)
 local 
@@ -264,8 +265,7 @@ fn minimize{a:type}(vs: list0(any_var), n: size_t, t: closure(a)): closure(a) =
     var vp1: varpos with pf2 = varpos_empty()
     fun loop{l1,l2:addr}(
       pf1: !bool@l1, pf2: !varpos@l2
-    | i: size_t, vs: list0(any_var), pr1: ptr(l1), vp1: ptr(l2)
-    ): void =
+    | i: size_t, vs: list0(any_var), pr1: ptr(l1), vp1: ptr(l2)): void =
       case vs of
       | V(x) :: vs => let
         val x = !x
@@ -353,8 +353,7 @@ implement unbox(b) =
     var vp1: varpos with pf = varpos_empty()
     fun loop{l:addr}(
       pf: !varpos@l
-    | cur: size_t, vs: list0(any_var), vp1: ptr(l) 
-    ): void = 
+    | cur: size_t, vs: list0(any_var), vp1: ptr(l)): void = 
       case vs of
       | V(v) :: vs => let
         val v = !v
@@ -431,9 +430,6 @@ implement mbinder_compose(b, f) = '{
 implement mbind_apply(b, arg) =
   box_apply2(lam(b, xs) => msubst(b, xs), b, arg)
 
-
-
-
 (* Variable creation ********************************************************)
 
 fn build_var_aux{a:type}(key:int)(vp: varpos, env: env): a = let
@@ -485,11 +481,46 @@ in
   (x, subst(b1, v), subst(b2, v))
 end
 
-implement eq_binder(eq, f, g) = let
-  val (_, t, u) = unbind2(f, g)
+implement eq_binder(eq, f, g) = 
+  let val (_, t, u) = unbind2(f, g) in eq(t, u) end
+
+implement unmbind{a,_}(b) = let
+  val arity: size_t = mbinder_arity(b)
+  val names = b.mb_names
+  val mkfree = b.mb_mkfree
+  val xs = array0_make_elt<var_t(a)>(arity, $UN.cast(0))
+  val vs = array0_make_elt<a>(arity, $UN.cast(0))
+  fun loop(i: size_t) =
+    if i < arity then (
+      xs[i] := new_var(mkfree[i], names[i]);
+      vs[i] := mkfree[i](xs[i]);
+      loop(i + 1))
+  val _ = loop(i2sz(0))
 in
-  eq(t, u)
+  (xs, msubst(b, vs))
 end
+
+implement unmbind2{a,_}(b1, b2) = let
+  val arity1 = mbinder_arity(b1)
+  val arity2 = mbinder_arity(b2)
+  val names = b1.mb_names
+  val mkfree = b1.mb_mkfree
+  val _ = if arity1 != arity2 then $raise Arity_mismatch
+  val xs = array0_make_elt<var_t(a)>(arity1, $UN.cast(0))
+  val vs = array0_make_elt<a>(arity1, $UN.cast(0))
+  fun loop(i: size_t) =
+    if i < arity1 then (
+      xs[i] := new_var(mkfree[i], names[i]);
+      vs[i] := mkfree[i](xs[i]);
+      loop(i + 1))
+  val _ = loop(i2sz(0))
+in
+  (xs, msubst(b1, vs), msubst(b2, vs))
+end
+
+implement eq_mbinder(eq, f, g) =
+  (mbinder_arity(f) = mbinder_arity(g)) &&
+  let val (_, t, u) = unmbind2(f, g) in eq(t, u) end
 
 (* Implementation of [bind_var] *********************************************)
 
@@ -530,9 +561,10 @@ in
   else let
     val env = env_copy(env)
     val _ = env_set_next_free(env, rank + 1);
-    implement intrange_foreach$fwork<void>(i, env0) =
-      env_set(env, g0int2uint(i), $UN.cast{any}(0))
-    val _ = intrange_foreach(sz2i(rank + 1), sz2i(next))
+    // TODO: check if this is needed
+    // implement intrange_foreach$fwork<void>(i, env0) =
+    //   env_set(env, g0int2uint(i), $UN.cast{any}(0))
+    // val _ = intrange_foreach(sz2i(rank + 1), sz2i(next))
     val _ = env_set(env, rank, arg);
   in
     t(env)
@@ -618,3 +650,114 @@ implement box_binder(f, b) =
   in
     bind_var(x, f(t))
   end
+
+(* Implementation of [bind_mvar] ********************************************)
+
+fn check_arity{a:type}(xs: mvar(a), args: array0(a)): void =
+  if xs.size() != args.size() then $raise Arity_mismatch
+
+fn bind_mvar_aux0{a,b:type}(xs: mvar(a), t: b, args: array0(a)): b =
+  (check_arity(xs, args); t)
+
+fn bind_mvar_aux1{a,b:type}(
+  m: size_t, 
+  xs: mvar(a), 
+  mb_binds: array0(bool),
+  t: cfun(env,b),
+  args: array0(a)
+): b = let
+  val _ = check_arity(xs, args)
+  val v = env_create(i2sz(0), m)
+  val sz = xs.size()
+  var pos: size_t with pf = i2sz(0)
+  fun loop{l:addr}(
+    pf: !size_t@l 
+  | i: size_t, pos: ptr(l)): void =
+    if i < sz then (
+      if mb_binds[i] then (
+        env_set(v, !pos, args[i]);  
+        !pos := !pos + 1);
+      loop(pf | i + 1, pos))
+  val _ = loop(pf | i2sz(0), addr@pos)
+  val _ = env_set_next_free(v, pos)
+in
+  t(v)
+end
+
+fn bind_mvar_aux2{a,b:type}(
+  xs: mvar(a),
+  t: cfun(env,b),
+  env: env
+)(args: array0(a)): b =
+  (check_arity(xs, args); t(env))
+
+fn bind_mvar_aux3{a,b:type}(
+  xs: mvar(a),
+  t: cfun(env,b),
+  mb_names: array0(string),
+  mb_rank: size_t, 
+  mb_binds: array0(bool),
+  mb_mkfree: array0(mkfree(a)),
+  env: env
+): mbinder(a, b) = '{
+  mb_names  = mb_names,
+  mb_binds  = mb_binds,
+  mb_rank   = mb_rank,
+  mb_mkfree = mb_mkfree,
+  mb_value  = bind_mvar_aux2(xs, t, env)
+}
+
+fn bind_mvar_aux4{a,b:type}(
+  xs: mvar(a),
+  t: cfun(env,b),
+  mb_rank: size_t,
+  mb_binds: array0(bool),
+  env: env
+)(args: array0(a)): b = let
+  val _ = check_arity(xs, args)
+  val sz = xs.size()
+  val next = env_get_next_free(env)
+  var cur_pos: size_t with pf = mb_rank 
+  fun loop{l:addr}(
+    pf: !size_t@l 
+  | i: size_t, cur_pos: ptr(l), env: env): void = 
+    if i < sz then (
+      if mb_binds[i] then (
+        env_set(env, !cur_pos, args[i]);
+        !cur_pos := !cur_pos + 1); 
+      loop(pf | i + 1, cur_pos, env))
+in
+  if next = mb_rank then let
+    val _ = loop(pf | i2sz(0), addr@cur_pos, env)
+    val _ = env_set_next_free(env, cur_pos)
+  in
+    t(env)
+  end 
+  else let
+    val env = env_copy(env)
+    val _ = loop(pf | i2sz(0), addr@cur_pos, env)
+    val _ = env_set_next_free(env, cur_pos)
+    // TODO: check if this is needed
+    // implement intrange_foreach$fwork<void>(i, env0) =
+    //   env_set(env, g0int2uint(i), $UN.cast{any}(0))
+    // val _ = intrange_foreach(sz2i(cur_pos), sz2i(next))
+  in
+    t(env)
+  end
+end
+
+fn bind_mvar_aux5{a,b:type}(
+  xs: mvar(a),
+  t: cfun(env,b),
+  mb_names: array0(string),
+  mb_rank: size_t,
+  mb_binds: array0(bool),
+  mb_mkfree: array0(mkfree(a)),
+  env: env
+): mbinder(a,b) = '{
+  mb_names  = mb_names,
+  mb_binds  = mb_binds,
+  mb_rank   = mb_rank,
+  mb_mkfree = mb_mkfree,
+  mb_value  = bind_mvar_aux4(xs, t, mb_rank, mb_binds, env) 
+}

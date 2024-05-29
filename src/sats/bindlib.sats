@@ -68,8 +68,14 @@ fn mbind_apply{a,b:type}(b: box(mbinder(a,b)), b: box(array0(a))): box(b)
 fn new_var{a:type}(mkfree: mkfree(a), name: string): var_t(a)
 fn copy_var{a,b:type}(x: var_t(a), mkfree: mkfree(b), name: string): var_t(b)
 
-fn unbind{a,b:type}(b: binder(a,b)): (var_t(a), b)
-fn unbind2{a,b:type}(b1: binder(a,b), b2: binder(a,b)): (var_t(a), b, b)
+fn unbind{a,b:type}(b: binder(a,b)): (var_t(a),b)
+fn unbind2{a,b:type}(b1: binder(a,b), b2: binder(a,b)): (var_t(a),b,b)
 fn eq_binder{a,b:type}(eq: cfun2(b,b,bool), f: binder(a,b), g: binder(a,b)): bool
+
+fn unmbind{a,b:type}(b: mbinder(a,b)): (mvar(a), b)
+fn unmbind2{a,b:type}(b1: mbinder(a,b), b2: mbinder(a,b)): (mvar(a),b,b)
+fn eq_mbinder{a,b:type}(eq: cfun2(b,b,bool), f: mbinder(a,b), g: mbinder(a,b)): bool
+
+
 fn bind_var{a,b:type}(x: var_t(a), b: box(b)): box(binder(a, b))
 fn box_binder{a,b:type}(f: cfun(b,box(b)), b: binder(a,b)): box(binder(a,b))
