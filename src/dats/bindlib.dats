@@ -163,8 +163,8 @@ and var_type(a:type) =
 and any_var =
   | V of [a:type](ref(var_t(a)))
 
-assume box_boxed(a) = box_type(a)
-assume var_boxed(a) = var_type(a)
+assume box_type(a) = box_type(a)
+assume var_type(a) = var_type(a)
 
 (* var_t methods *)
 implement name_of(Var(x)) = x.var_name
@@ -382,7 +382,7 @@ typedef binder_type(a,b) = '{
   b_value = cfun(a,b)    (* Substitution function.                 *) 
 }
 
-assume binder_boxed(a,b) = binder_type(a,b)
+assume binder_type(a,b) = binder_type(a,b)
 
 implement subst(b, x) = b.b_value(x)
 implement binder_name(b) = b.b_name
