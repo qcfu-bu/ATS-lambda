@@ -519,7 +519,8 @@ implement bind_var(x, b) =
         val Var(y0) = !y
         val _ = if x0.var_key <> y0.var_key then $raise Not_found
         val r = i2sz(0)
-        val t = lam(env) =<cloref1> t(varpos_unit(x0.var_key, r), env)
+        val t = lam(env: env) =<cloref1> 
+          t(varpos_unit(x0.var_key, r), env)
         val value = bind_var_aux1(n, t)
       in
         Box(build_binder(x, i2sz(0), true, value))
@@ -527,9 +528,9 @@ implement bind_var(x, b) =
       | _ => let
         val vs = remove(x, vs)
         val Var(x0) = x
-        val cl = lam(vp, env) =<cloref1> let
+        val cl = lam(vp, env: env) =<cloref1> let
           val r = i2sz(vs.length())
-          val t = lam(env) =<cloref1> 
+          val t = lam(env: env) =<cloref1> 
             t(varpos_insert(vp, x0.var_key, r), env)
         in
           bind_var_aux3(x, r, t, env)
@@ -539,8 +540,8 @@ implement bind_var(x, b) =
       end
     with
     | ~Not_found() => let
-      val value = lam(vp, env) =<cloref1> let
-        val t = lam(env) =<cloref1> t(vp, env)
+      val value = lam(vp, env: env) =<cloref1> let
+        val t = lam(env: env) =<cloref1> t(vp, env)
         val rank = g1int2uint(vs.length()) 
       in
         bind_var_aux5(x, rank, t, env)
@@ -548,3 +549,11 @@ implement bind_var(x, b) =
     in
       Env(vs, n, value)
     end
+
+implement box_binder(f, b) =
+  if binder_closed(b) then box(b)
+  else let
+    val (x, t) = unbind b
+  in
+    bind_var(x, f(t))
+  end

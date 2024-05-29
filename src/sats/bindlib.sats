@@ -59,3 +59,4 @@ fn unbind{a,b:type}(b: binder_t(a,b)): (var_t(a), b)
 fn unbind2{a,b:type}(b1: binder_t(a,b), b2: binder_t(a,b)): (var_t(a), b, b)
 fn eq_binder{a,b:type}(eq: cfun2(b,b,bool), f: binder_t(a,b), g: binder_t(a,b)): bool
 fn bind_var{a,b:type}(x: var_t(a), b: box_t(b)): box_t(binder_t(a, b))
+fn box_binder{a,b:type}(f: cfun(b,box_t(b)), b: binder_t(a,b)): box_t(binder_t(a,b))

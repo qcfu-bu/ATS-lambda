@@ -29,7 +29,16 @@
 
 datatype expr =
   | Var of var_t(expr)
+  | Lam of binder_t(expr, expr)
   | App of (expr, expr)
+
+fun mk_var(s): var_t(expr) = new_var(lam(x) => Var(x), s)
+fun _Var(x: var_t(expr)): box_t(expr) = box_var(x)
+fun _App(m: box_t(expr), n: box_t(expr)): box_t(expr) =
+  box_apply2(lam(m, n) => App(m, n), m, n)
+fun _Lam(b: box_t(binder_t(expr, expr))): box_t(expr) =
+  box_apply(lam(b) => Lam(b), b)
+
 
 extern fun fprint_expr(out: FILEref, m: expr): void
 extern fun print_expr(m: expr): void
@@ -45,6 +54,11 @@ implement prerr_expr(m) = fprint_expr(stderr_ref, m)
 implement fprint_expr(out: FILEref, m: expr): void =
   case m of
   | Var(x) => fprint!(out, x)
+  | Lam(b) => let
+      val (x, m) = unbind(b)
+    in
+      fprintln!(out, "Lam(", x, ", ", m, ")")
+    end
   | App(m, n) => fprint!(out, "App(", m, ", ", n, ")")
 
 
@@ -61,15 +75,14 @@ implement fprint_expr(out: FILEref, m: expr): void =
 //     | ~None_vt _ => println!("ParseError")
 //   end else println!("name of file expected")
 
+
 implement main0() = let
-  fun mk_var(s): var_t(expr) = new_var(lam(x) => Var(x), s)
-  fun _Var(x: var_t(expr)): box_t(expr) = box_var(x)
-  fun _App(m: box_t(expr), n: box_t(expr)): box_t(expr) =
-    box_apply2(lam(m, n) => App(m, n), m, n)
   val x = mk_var("x") 
   val y = mk_var("y") 
   val z = mk_var("z") 
   val m = _App(_Var(x), _Var(y))
+  val m = _Lam(bind_var(x, m))
   val m = unbox(m)
-in println!(m)
+in 
+  println!(m)
 end
