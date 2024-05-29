@@ -796,6 +796,7 @@ in
       end;
       loop(pf1, pf2 | i - 1, vs, m))
     val _ = loop(pf1, pf2 | sz2i(sz) - 1, addr@vs, addr@m)
+    val vs = vs
   in
     case vs of
     | nil0() => let
@@ -830,7 +831,49 @@ in
       mb_value  = mb_value
     }
     end
-    | _ when m = n => _
-    | _ => _
+    | _ when m = n => let
+      val cl = lam(vp, env: env) =<cloref1> let
+        val mb_rank = g1int2uint(vs.length())
+        val mb_binds = array0_map(xs, lam(x) => false)
+        val mb_names = array0_map(xs, lam(x) => 
+          let val Var(x0) = x in x0.var_name end)
+        val t = lam(env: env) =<cloref1> t(vp, env)
+      in
+        bind_mvar_aux3(xs, t, mb_names, mb_rank, mb_binds, mb_mkfree, env)
+      end
+    in
+      Env(vs, n, cl)
+    end
+    | _ => let
+      val cl = lam(vp, env: env) =<cloref1> let
+        val mb_names = array0_map(xs, lam(x) => "")
+        val mb_binds = array0_map(xs, lam(x) => false)
+        val mb_rank = g1int2uint(vs.length())
+        var cur_pos: size_t with pf1 = mb_rank
+        var vp: varpos with pf2 = vp
+        fun loop{l1,l2:addr}(
+          pf1: !size_t@l1, pf2: !varpos@l2
+        | i: size_t, cur_pos: ptr(l1), vp: ptr(l2)): void = if i < sz then (
+          let
+            val Var(x0) = xs[i]
+            val key = keys[i]
+          in
+            mb_names[i] := x0.var_name;
+            if key >= 0 then (
+              !vp := varpos_insert(!vp, key, !cur_pos);
+              !cur_pos := !cur_pos + 1;
+              mb_binds[i] := true)
+            else 
+              mb_binds[i] := false
+          end; loop(pf1, pf2 | i + 1, cur_pos, vp))
+        val _ = loop(pf1, pf2 | i2sz(0), addr@cur_pos, addr@vp)
+        val vp = vp
+        val t = lam(env: env) =<cloref1> t(vp, env)
+      in
+        bind_mvar_aux5(xs, t, mb_names, mb_rank, mb_binds, mb_mkfree, env)
+      end
+    in
+      Env(vs, m, cl)
+    end
   end
 end
