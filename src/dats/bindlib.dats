@@ -178,8 +178,14 @@ implement print_var(x) = fprint_var(stdout_ref, x)
 implement prerr_var(x) = fprint_var(stderr_ref, x)
 implement fprint_var(out, x) = fprint!(out, name_of(x), "$", uid_of(x))
 
-implement(a) gcompare_val_val<var_t(a)>(x, y) = $effmask_all(compare_vars(x, y))
 implement(a) fprint_val<var_t(a)>(out, x) = fprint_var(out, x)
+implement(a) gcompare_val_val<var_t(a)>(x, y) = $effmask_all(compare_vars(x, y))
+
+fun print_any_var(V(x): any_var) = fprint_var(stdout_ref, !x)
+fun prerr_any_var(V(x): any_var) = fprint_var(stderr_ref, !x)
+fun fprint_any_var(out: FILEref, V(x): any_var) = fprint_var(out, !x)
+
+implement(a) fprint_val<any_var>(out, x) = fprint_any_var(out, x)
 
 (* mvar_t methods *)
 implement names_of(xs) = array0_map(xs, lam(x) => name_of(x))
@@ -218,7 +224,7 @@ fn remove{a:type}(x: var_t(a), xs: list0(any_var)): list0(any_var) = let
   val var_key = uid_of(x)
   fun remove(acc, xs: list0(any_var)) =
     case xs of
-    | v as V(x) :: l when uid_of(!x) < var_key => remove(v :: acc, l)
+    | (v as V(x)) :: l when uid_of(!x) < var_key => remove(v :: acc, l)
     | V(x) :: l when uid_of(!x) = var_key => list0_revapp(acc, l)
     | _ => (
       println!("remove_not_found");
@@ -559,11 +565,11 @@ in
   else let
     val env = env_copy(env)
     val _ = env_set_next_free(env, rank + 1);
+    val _ = env_set(env, rank, arg);
     // TODO: check if this is needed
     // implement intrange_foreach$fwork<void>(i, env0) =
     //   env_set(env, g0int2uint(i), $UN.cast{any}(0))
     // val _ = intrange_foreach(sz2i(rank + 1), sz2i(next))
-    val _ = env_set(env, rank, arg);
   in
     t(env)
   end
@@ -775,27 +781,36 @@ in
   }
   end
   | Env(vs, n, t) => let 
+    val _ = println!("bind_mvar0(", xs, ")")
     val sz = xs.size()
     val keys: array0(int) = array0_map(xs, lam(x) => 0)
     val vss = array0_map(xs, lam(x) => vs)
     var vs: list0(any_var) with pf1 = vs
     var m: size_t with pf2 = n
+    val _ = println!("bind_mvar1")
     fun loop{l1,l2:addr}(
       pf1: !list0(any_var)@l1, pf2: !size_t@l2
     | i: int, vs: ptr(l1), m: ptr(l2)): void = if (0 <= i) then (
       let
         val v = xs[i]
+        val _ = println!("removing(", xs, "with",  i, " = ",  v, ")");
+        val _ = println!("from(", !vs, ")");
         val Var(x0) = v
         val _ = try
           !vs := remove(v, !vs);
+          println!("removed(", v, ")");
+          println!("after_remove(", !vs, ")");
           !m := !m + 1;
           keys[i] := x0.var_key
-        with ~Not_found() => keys[i] := ~1
+        with ~Not_found() => (
+          println!("not_found(", v, ")");
+          keys[i] := ~1)
       in
         vss[i] := !vs
       end;
       loop(pf1, pf2 | i - 1, vs, m))
     val _ = loop(pf1, pf2 | sz2i(sz) - 1, addr@vs, addr@m)
+    val _ = println!("bind_mvar1")
     val vs = vs
   in
     case vs of

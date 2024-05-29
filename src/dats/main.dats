@@ -69,7 +69,7 @@ implement fprint_expr(out: FILEref, m: expr): void =
   | Fun(b) => let
       val (xs, m) = unmbind(b)
     in
-      fprintln!(out, "Fun(???, ", m, ")")
+      fprintln!(out, "Fun(", "[", xs, "]", ", ", m, ")")
     end
   | App(m, n) => fprint!(out, "App(", m, ", ", n, ")")
 
