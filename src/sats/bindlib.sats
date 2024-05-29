@@ -26,6 +26,14 @@ typedef mvar(a:type) = array0(var_t(a))
 fn names_of{a:type}(xs: mvar(a)): array0(string)
 fn uids_of{a:type}(xs: mvar(a)): array0(int)
 
+fn fprint_mvar{a:type}(out: FILEref, m: mvar(a)): void
+fn print_mvar{a:type}(x: mvar(a)): void
+fn prerr_mvar{a:type}(x: mvar(a)): void
+
+overload fprint with fprint_mvar
+overload print with print_mvar
+overload prerr with prerr_mvar
+
 fn box{a:type}(t: a): box(a)
 fn apply_box{a,b:type}(f: box(cfun(a,b)), a: box(a)): box(b)
 fn occur{a,b:type}(v: var_t(a), b: box(b)): bool

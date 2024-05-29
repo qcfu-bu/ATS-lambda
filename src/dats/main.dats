@@ -1,5 +1,6 @@
 // header
 #include "share/atspre_staload.hats"
+#include "share/atspre_staload_libats_ML.hats"
 
 // statics
 #staload "./../sats/types.sats"
@@ -26,18 +27,24 @@
 #dynload "./../dats/parsec.dats"
 #dynload "./../dats/bindlib.dats"
 
+(* list notation *)
+#define :: list0_cons
+#define nil0 list0_nil 
 
 datatype expr =
   | Var of var_t(expr)
   | Lam of binder(expr, expr)
+  | Fun of mbinder(expr, expr)
   | App of (expr, expr)
 
 fun mk_var(s): var_t(expr) = new_var(lam(x) => Var(x), s)
 fun _Var(x: var_t(expr)): box(expr) = box_var(x)
 fun _App(m: box(expr), n: box(expr)): box(expr) =
   box_apply2(lam(m, n) => App(m, n), m, n)
-fun _Lam(b: box(binder(expr, expr))): box(expr) =
+fun _Lam(b: box(binder(expr,expr))): box(expr) =
   box_apply(lam(b) => Lam(b), b)
+fun _Fun(b: box(mbinder(expr,expr))): box(expr) =
+  box_apply(lam(b) => Fun(b), b)
 
 
 extern fun fprint_expr(out: FILEref, m: expr): void
@@ -59,6 +66,11 @@ implement fprint_expr(out: FILEref, m: expr): void =
     in
       fprintln!(out, "Lam(", x, ", ", m, ")")
     end
+  | Fun(b) => let
+      val (xs, m) = unmbind(b)
+    in
+      fprintln!(out, "Fun(???, ", m, ")")
+    end
   | App(m, n) => fprint!(out, "App(", m, ", ", n, ")")
 
 
@@ -79,7 +91,8 @@ implement fprint_expr(out: FILEref, m: expr): void =
 implement main0() = let
   val x = mk_var("x") 
   val y = mk_var("y") 
-  val m = _Lam(bind_var(x, _App(_Var(x), _Var(y))))
+  val xs = array0_make_list0(x :: y :: nil0)
+  val m = _Fun(bind_mvar(xs, _App(_Var(x), _Var(y))))
   val m = unbox(m)
 in 
   println!(m)
