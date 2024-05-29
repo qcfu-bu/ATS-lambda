@@ -1,9 +1,11 @@
 #include "share/atspre_staload.hats"
-#staload "./../sats/types.sats"
+
 #staload "./../sats/name.sats"
-#staload "libats/SATS/hashfun.sats"
-#staload _ = "libats/DATS/hashfun.dats"
+
 #staload UN = "prelude/SATS/unsafe.sats"
+#staload "libats/SATS/hashfun.sats"
+
+#staload _ = "libats/DATS/hashfun.dats"
 
 local
   assume name_flt = @(string, ulint)

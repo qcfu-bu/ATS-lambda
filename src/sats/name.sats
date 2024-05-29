@@ -1,4 +1,5 @@
-#staload "./types.sats"
+abst0ype name_flt
+typedef name = name_flt
 
 fun mk_name(string): name
 fun eq_name(name, name): bool

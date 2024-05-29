@@ -1,9 +1,12 @@
-#staload "./types.sats"
+#staload "./name.sats"
 
-exception nmap_find_exn of string
+abstype nmap_type(a : type)
+typedef nmap(a) = nmap_type(a)
 
-fun empty{a:type}(): nmap a
-fun one{a:type}(name, a): nmap a
-fun add{a:type}(name, a, nmap a): nmap a
-fun find{a:type}(name, nmap a): a
-fun remove{a:type}(name, nmap a): nmap a
+exception NMap_find_exn of name
+
+fun nmap_empty{a:type}(): nmap a
+fun nmap_unit{a:type}(name, a): nmap a
+fun nmap_insert{a:type}(nmap a, name, a): nmap a
+fun nmap_find{a:type}(nmap a, name): a
+fun nmap_remove{a:type}(nmap a, name): nmap a
