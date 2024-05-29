@@ -80,3 +80,4 @@ fn bind_var{a,b:type}(x: var_t(a), b: box(b)): box(binder(a, b))
 fn box_binder{a,b:type}(f: cfun(b,box(b)), b: binder(a,b)): box(binder(a,b))
 
 fn bind_mvar{a,b:type}(xs: mvar(a), b: box(b)): box(mbinder(a, b))
+fn box_mbinder{a,b:type}(f: cfun(b,box(b)), b: mbinder(a,b)): box(mbinder(a,b))

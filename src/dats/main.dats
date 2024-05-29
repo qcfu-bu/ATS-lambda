@@ -92,7 +92,7 @@ implement main0() = let
   val x = mk_var("x") 
   val y = mk_var("y") 
   val xs = array0_make_list0(x :: y :: nil0)
-  val m = _Fun(bind_mvar(xs, _App(_Var(x), _Var(y))))
+  val m = _Fun(bind_mvar(xs, _App(_Var(x), _Var(x))))
   val m = unbox(m)
 in 
   println!(m)

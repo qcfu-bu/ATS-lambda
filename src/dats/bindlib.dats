@@ -892,3 +892,11 @@ in
     end
   end
 end
+
+implement box_mbinder(f, b) =
+  if b.mb_rank = 0 then box(b)
+  else let
+    val (xs, t) = unmbind(b)
+  in
+    bind_mvar(xs, f(t))
+  end
