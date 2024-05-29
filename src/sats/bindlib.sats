@@ -76,6 +76,7 @@ fn unmbind{a,b:type}(b: mbinder(a,b)): (mvar(a), b)
 fn unmbind2{a,b:type}(b1: mbinder(a,b), b2: mbinder(a,b)): (mvar(a),b,b)
 fn eq_mbinder{a,b:type}(eq: cfun2(b,b,bool), f: mbinder(a,b), g: mbinder(a,b)): bool
 
-
 fn bind_var{a,b:type}(x: var_t(a), b: box(b)): box(binder(a, b))
 fn box_binder{a,b:type}(f: cfun(b,box(b)), b: binder(a,b)): box(binder(a,b))
+
+fn bind_mvar{a,b:type}(xs: mvar(a), b: box(b)): box(mbinder(a, b))

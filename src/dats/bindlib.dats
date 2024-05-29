@@ -656,7 +656,7 @@ implement box_binder(f, b) =
 fn check_arity{a:type}(xs: mvar(a), args: array0(a)): void =
   if xs.size() != args.size() then $raise Arity_mismatch
 
-fn bind_mvar_aux0{a,b:type}(xs: mvar(a), t: b, args: array0(a)): b =
+fn bind_mvar_aux0{a,b:type}(xs: mvar(a), t: b)(args: array0(a)): b =
   (check_arity(xs, args); t)
 
 fn bind_mvar_aux1{a,b:type}(
@@ -761,3 +761,23 @@ fn bind_mvar_aux5{a,b:type}(
   mb_mkfree = mb_mkfree,
   mb_value  = bind_mvar_aux4(xs, t, mb_rank, mb_binds, env) 
 }
+
+implement bind_mvar(xs, b) = let
+  val mb_mkfree = array0_map(xs, lam(x) => 
+    let val Var(x) = x in x.var_mkfree end)
+in
+  case b of
+  | Box(t) => let
+    val mb_binds = array0_map(xs, lam(x) => false)
+    val mb_names = array0_map(xs, lam(x) => name_of(x))
+    val mb_value = bind_mvar_aux0(xs, t)
+  in Box '{
+    mb_names  = mb_names,
+    mb_binds  = mb_binds,
+    mb_rank   = i2sz(0),
+    mb_mkfree = mb_mkfree,
+    mb_value  = mb_value
+  }
+  end
+  | Env(vs, n, t) => _
+end
