@@ -51,10 +51,19 @@ fn binder_const{a,b:type}(b: binder(a,b)): bool
 fn binder_closed{a,b:type}(b: binder(a,b)): bool
 fn binder_rank{a,b:type}(b: binder(a,b)): size_t
 fn binder_compose{a,b,c:type}(b: binder(a,b), f: cfun(b,c)): binder(a,c)
+fn bind_apply{a,b:type}(b: box(binder(a,b)), b: box(a)): box(b)
 
 abstype mbinder_type(a:type,b:type)
 typedef mbinder(a,b) = mbinder_type(a,b)
 
+fn msubst{a,b:type}(b: mbinder(a,b), xs: array0(a)): b
+fn mbinder_arity{a,b:type}(b: mbinder(a,b)): size_t
+fn mbinder_names{a,b:type}(b: mbinder(a,b)): array0(string)
+fn mbinder_occur{a,b:type}(b: mbinder(a,b)): array0(bool)
+fn mbinder_const{a,b:type}(b: mbinder(a,b)): bool
+fn mbinder_rank{a,b:type}(b: mbinder(a,b)): size_t
+fn mbinder_compose{a,b,c:type}(b: mbinder(a,b), f: cfun(b,c)): mbinder(a,c)
+fn mbind_apply{a,b:type}(b: box(mbinder(a,b)), b: box(array0(a))): box(b)
 
 fn new_var{a:type}(mkfree: mkfree(a), name: string): var_t(a)
 fn copy_var{a,b:type}(x: var_t(a), mkfree: mkfree(b), name: string): var_t(b)

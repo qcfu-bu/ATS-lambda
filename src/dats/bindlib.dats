@@ -395,8 +395,44 @@ implement binder_compose(b, f) = '{
   b_bind   = b.b_bind,
   b_rank   = b.b_rank,
   b_mkfree = b.b_mkfree,
-  b_value  = lam(x) =<cloref1> (f(b.b_value(x)))
+  b_value  = lam(x) =<cloref1> f(b.b_value(x))
 }
+implement bind_apply(b, arg) = 
+  box_apply2(lam(b, x) => subst(b, x), b, arg)
+
+typedef mbinder_type(a,b) = '{
+  mb_names = array0(string),     (* Preferred names for the bound variables.   *)
+  mb_binds = array0(bool),       (* Indicates whether the variables occur.     *)
+  mb_rank  = size_t,             (* Number of remaining free variables.        *)
+  mb_mkfree = array0(mkfree(a)), (* Injections of variables into domain.       *)
+  mb_value  = cfun(array0(a), b) (* Substitution function.                     *)
+}
+
+assume mbinder_type(a,b) = mbinder_type(a,b)
+
+implement msubst(b, xs) = b.mb_value(xs)
+implement mbinder_arity(b) = let 
+  val mb_names = b.mb_names
+  val len = mb_names.length()
+in
+  g1int2uint(len)
+end
+implement mbinder_names(b) = b.mb_names
+implement mbinder_occur(b) = b.mb_binds
+implement mbinder_const(b) = array0_forall(b.mb_binds, lam(x) => ~x)
+implement mbinder_rank(b) = b.mb_rank
+implement mbinder_compose(b, f) = '{
+  mb_names = b.mb_names, 
+  mb_binds = b.mb_binds,
+  mb_rank = b.mb_rank,
+  mb_mkfree = b.mb_mkfree,
+  mb_value = lam(x) =<cloref1> f(b.mb_value(x))
+}
+implement mbind_apply(b, arg) =
+  box_apply2(lam(b, xs) => msubst(b, xs), b, arg)
+
+
+
 
 (* Variable creation ********************************************************)
 
