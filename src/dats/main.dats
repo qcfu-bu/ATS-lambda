@@ -79,9 +79,7 @@ implement fprint_expr(out: FILEref, m: expr): void =
 implement main0() = let
   val x = mk_var("x") 
   val y = mk_var("y") 
-  val z = mk_var("z") 
-  val m = _App(_Var(x), _Var(y))
-  val m = _Lam(bind_var(x, m))
+  val m = _Lam(bind_var(x, _App(_Var(x), _Var(y))))
   val m = unbox(m)
 in 
   println!(m)

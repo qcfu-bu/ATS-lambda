@@ -115,7 +115,7 @@ fn varpos_unit(i: int, x: size_t): varpos =
 fn varpos_find(vp: varpos, i: int): size_t =
   case funmap_search(vp, i) of
   | ~Some_vt(x) => x
-  | ~None_vt( ) => $raise Not_found
+  | ~None_vt( ) => (println!("varpos_not_found"); $raise Not_found)
 
 fn map_closure{a,b:type}(f: cfun(a,b), cla: closure(a)): closure(b) = 
   lam(vs, env) => f(cla(vs, env))
@@ -219,7 +219,9 @@ fn remove{a:type}(x: var_t(a), xs: list0(any_var)): list0(any_var) = let
     case xs of
     | v as V(x) :: l when uid_of(!x) < var_key => remove(v :: acc, l)
     | V(x) :: l when uid_of(!x) = var_key => list0_revapp(acc, l)
-    | _ => $raise Not_found 
+    | _ => (
+      println!("remove_not_found");
+      $raise Not_found)
 in
   remove(nil0, xs)
 end
@@ -267,6 +269,7 @@ fn minimize{a:type}(vs: list0(any_var), n: size_t, t: closure(a)): closure(a) =
       case vs of
       | V(x) :: vs => let
         val x = !x
+        val _ = println!("varpos_find(", x, ")")
         val j = varpos_find(vp, uid_of(x))
         val _ = if i != j then !pr1 := false
         val _ = tab[i] := j
@@ -276,8 +279,8 @@ fn minimize{a:type}(vs: list0(any_var), n: size_t, t: closure(a)): closure(a) =
       end
       | nil0() => ()
     val _ = loop(pf1, pf2 | i2sz(0), vs, addr@pr1, addr@vp1)
-    val new_vp = vp1
-    val t1 = lam(env: env) =<cloref1> t(new_vp, env)
+    val vp1 = vp1
+    val t1 = lam(env: env) =<cloref1> t(vp1, env)
   in
     if pr1
     then minimize_aux_prefix(g1int2uint(size), n, t1, env)
@@ -397,21 +400,31 @@ implement binder_compose(b, f) = '{
 
 (* Variable creation ********************************************************)
 
-fn build_var_aux{a:type}(key:int)(vp: varpos, env: env): a =
-  env_get(varpos_find(vp, key) , env)
+fn build_var_aux{a:type}(key:int)(vp: varpos, env: env): a = let
+  val _ = println!("varpos_find_aux(", key, " in ", funmap_listize(vp), ")");
+in
+  try env_get(varpos_find(vp, key) , env) 
+  with
+  | ~Not_found() => (
+    println!("varpos_not_found_aux(", key, ")");
+    $raise Not_found())
+end
 
 fn build_var{a:type}(
   var_key: int, 
   var_mkfree: mkfree_t(a), 
   name: string
 ): var_t(a) = let
+  val _ = println!("build_var(", name, ")")
   val r: ref(var_t(a)) = ref($UN.cast(0))
-  val x: var_t(a) = Var@{ 
+  val x: var_t(a) = try Var@{ 
     var_key   = var_key, 
     var_name  = name, 
     var_mkfree= var_mkfree, 
     var_box   = Env(V(r) :: nil0, i2sz(0), build_var_aux(var_key))
   }
+  with ~Not_found() => (
+    println!("build_var_failed(", name, ")"); $raise Not_found)
   val _ = !r := x
 in 
   x 
@@ -480,9 +493,12 @@ in
     t(env))
   else let
     val env = env_copy(env)
+    val _ = env_set_next_free(env, rank + 1);
+    implement intrange_foreach$fwork<void>(i, env0) =
+      env_set(env, g0int2uint(i), $UN.cast{any}(0))
+    val _ = intrange_foreach(sz2i(rank + 1), sz2i(next))
+    val _ = env_set(env, rank, arg);
   in
-    env_set_next_free(env, rank + 1);
-    env_set(env, rank, arg);
     t(env)
   end
 end
@@ -508,16 +524,22 @@ fn bind_var_aux5{a,b:type}(
 ): binder_t(a,b) =
   build_binder(x, rank, false, bind_var_aux4(t, env))
 
-implement bind_var(x, b) = 
+implement bind_var(x, b) = let
+  val _ = println!("bind_var(", x, ")")
+in
   case b of
   | Box(t) => Box(build_binder(x, i2sz(0), false, lam(_) => t))
   | Env(vs, n, t) => 
     try 
       case vs of
-      | V(y) :: nil0 => let
+      | V(y) :: nil0() => let
+        val _ = println!("bind_var1")
         val Var(x0) = x
         val Var(y0) = !y
-        val _ = if x0.var_key <> y0.var_key then $raise Not_found
+        val _ = 
+          if x0.var_key != y0.var_key then (
+            println!("not_found");
+            $raise Not_found)
         val r = i2sz(0)
         val t = lam(env: env) =<cloref1> 
           t(varpos_unit(x0.var_key, r), env)
@@ -526,10 +548,12 @@ implement bind_var(x, b) =
         Box(build_binder(x, i2sz(0), true, value))
       end
       | _ => let
+        val _ = println!("bind_var2")
         val vs = remove(x, vs)
         val Var(x0) = x
         val cl = lam(vp, env: env) =<cloref1> let
           val r = i2sz(vs.length())
+          val _ = println!("insert(", x, ", ", r, ")")
           val t = lam(env: env) =<cloref1> 
             t(varpos_insert(vp, x0.var_key, r), env)
         in
@@ -549,6 +573,7 @@ implement bind_var(x, b) =
     in
       Env(vs, n, value)
     end
+end
 
 implement box_binder(f, b) =
   if binder_closed(b) then box(b)
