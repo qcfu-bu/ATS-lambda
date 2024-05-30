@@ -1,6 +1,5 @@
 #include "share/atspre_staload.hats"
 #include "share/atspre_staload_libats_ML.hats"
-#define ATS_DYNLOADFLAG 0
 
 #staload "./../sats/bindlib.sats"
 #staload "./../sats/term1.sats"
@@ -10,7 +9,7 @@
 #staload "./../dats/term1.dats"
 
 implement interp1(m0) = begin
-  println!("interp1(", m0, ")");
+  // println!("interp1(", m0, ")");
   case m0 of
   | I1(_) => m0
   | B1(_) => m0

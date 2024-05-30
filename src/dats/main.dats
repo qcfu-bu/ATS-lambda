@@ -21,9 +21,11 @@
 #staload _ = "./../dats/interp1.dats"
 
 // initialize
-#dynload "./../dats/name.dats"
-#dynload "./../dats/parsec.dats"
 #dynload "./../dats/bindlib.dats"
+#dynload "./../dats/parsec.dats"
+#dynload "./../dats/name.dats"
+#dynload "./../dats/nmap.dats"
+#dynload "./../dats/interp1.dats"
 
 implement main0(argc, argv) = 
   if 2 <= argc then let 

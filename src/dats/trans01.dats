@@ -32,11 +32,23 @@ fn trans_op(opr: op0): op1 =
   | Or0() => Or1
   | Not0() => Not1
 
-fun trans_term(ctx: nmap(var_t(term1)), m: term0): box(term1) =
+fun trans_term(
+  ctx: nmap(var_t(term1)), 
+  m: term0
+): box(term1) = let
+  // val _ = println!("trans_term(", m, ")");
+in
   case m of
   | I0(i) => _I1(i)
   | B0(b) => _B1(b)
-  | Var0(x) => _Var1(nmap_find(ctx, x))
+  | Var0(x) => (
+    try 
+      // println!("nmap_try_find(", x, ", id: ", id_of_name(x), ")");
+      _Var1(nmap_find(ctx, x))
+    with 
+    | ~NMap_find_exn(x) => (
+      // println!("nmap_not_found(", x, ")");
+      $raise NMap_find_exn(x)))
   | Uni0(opr, m) => let 
       val opr = trans_op(opr)
       val m = trans_term(ctx, m)
@@ -55,6 +67,14 @@ fun trans_term(ctx: nmap(var_t(term1)), m: term0): box(term1) =
       val y = mk_var(string_of_name(y0))
       val ctx = nmap_insert(ctx, x0, x)
       val ctx = nmap_insert(ctx, y0, y)
+      // val _ = println!("nmap_insert(", x0, ", id: ", id_of_name(x0), ")")
+      // val _ = println!("nmap_insert(", y0, ", id: ", id_of_name(y0), ")")
+
+      // val _ = nmap_find(ctx, x0)
+      // val _ = println!("nmap_insert_ok(", x0, ")")
+      // val _ = nmap_find(ctx, y0)
+      // val _ = println!("nmap_insert_ok(", y0, ")")
+
       val m = trans_term(ctx, m)
       val xs = array0_make_arrpsz($arrpsz(x, y))
     in
@@ -81,6 +101,7 @@ fun trans_term(ctx: nmap(var_t(term1)), m: term0): box(term1) =
     in
       _Ifx1(m, n1, n2)
     end
+end
 
 implement trans01(m) =
   unbox(trans_term(nmap_empty(), m))

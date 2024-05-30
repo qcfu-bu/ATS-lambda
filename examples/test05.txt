@@ -5,4 +5,4 @@ let fibo n :=
     else
       loop (i - 1) b (a + b)
   in loop n 0 1
-in fibo 0
+in fibo 30
