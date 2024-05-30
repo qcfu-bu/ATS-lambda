@@ -15,8 +15,8 @@
 #staload _ = "./../dats/parsec.dats"
 #staload _ = "./../dats/parser.dats"
 #staload _ = "./../dats/term0.dats"
-// #staload _ = "./../dats/term1.dats"
-// #staload _ = "./../dats/trans01.dats"
+#staload _ = "./../dats/term1.dats"
+#staload _ = "./../dats/trans01.dats"
 
 // initialize
 #dynload "./../dats/name.dats"
@@ -29,7 +29,10 @@ implement main0(argc, argv) =
     val buf = streamize_fileref_char(fp)
   in
     case run_parser(seqr(ws(), term_parser()), buf) of
-    | ~Some_vt m => (
-      println!("parse_ok(", m, ")"))
+    | ~Some_vt m => let
+        val _ = println!("parse_ok(", m, ")")
+        val m = trans01(m) 
+        val _ = println!("trans01_ok(", m, ")")
+      in end
     | ~None_vt _ => println!("ParseError")
   end else println!("name of file expected")

@@ -3,4 +3,4 @@
 
 exception trans01_error of term0
 
-fun trans(term0): term1
+fun trans01(term0): term1
