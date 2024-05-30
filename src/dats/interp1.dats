@@ -9,7 +9,8 @@
 #staload "./../dats/bindlib.dats"
 #staload "./../dats/term1.dats"
 
-implement interp1(m0) =
+implement interp1(m0) = begin
+  println!("interp1(", m0, ")");
   case m0 of
   | I1(_) => m0
   | B1(_) => m0
@@ -82,3 +83,4 @@ implement interp1(m0) =
     | B1(true)  => interp1(n1)
     | B1(false) => interp1(n2) 
     | _ => $raise Interp1_exn(m0))
+end
