@@ -9,6 +9,7 @@
 #staload "./../sats/term0.sats"
 #staload "./../sats/term1.sats"
 #staload "./../sats/trans01.sats"
+#staload "./../sats/interp1.sats"
 
 // dynamics
 #staload _ = "./../dats/bindlib.dats"
@@ -17,6 +18,7 @@
 #staload _ = "./../dats/term0.dats"
 #staload _ = "./../dats/term1.dats"
 #staload _ = "./../dats/trans01.dats"
+#staload _ = "./../dats/interp1.dats"
 
 // initialize
 #dynload "./../dats/name.dats"
@@ -33,6 +35,8 @@ implement main0(argc, argv) =
         val _ = println!("parse_ok(", m, ")")
         val m = trans01(m) 
         val _ = println!("trans01_ok(", m, ")")
+        val m = interp1(m)
+        val _ = println!("interp1_ok(", m, ")")
       in end
     | ~None_vt _ => println!("ParseError")
   end else println!("name of file expected")

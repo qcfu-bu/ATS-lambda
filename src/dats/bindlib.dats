@@ -116,7 +116,9 @@ fn varpos_unit(i: int, x: size_t): varpos =
 fn varpos_find(vp: varpos, i: int): size_t =
   case funmap_search(vp, i) of
   | ~Some_vt(x) => x
-  | ~None_vt( ) => (println!("varpos_not_found"); $raise Not_found)
+  | ~None_vt( ) => (
+    // println!("varpos_not_found"); 
+    $raise Not_found)
 
 fn map_closure{a,b:type}(f: cfun(a,b), cla: closure(a)): closure(b) = 
   lam(vs, env) => f(cla(vs, env))
@@ -227,7 +229,7 @@ fn remove{a:type}(x: var_t(a), xs: list0(any_var)): list0(any_var) = let
     | (v as V(x)) :: l when uid_of(!x) < var_key => remove(v :: acc, l)
     | V(x) :: l when uid_of(!x) = var_key => list0_revapp(acc, l)
     | _ => (
-      println!("remove_not_found");
+      // println!("remove_not_found");
       $raise Not_found)
 in
   remove(nil0, xs)
@@ -275,7 +277,7 @@ fn minimize{a:type}(vs: list0(any_var), n: size_t, t: closure(a)): closure(a) =
       case vs of
       | V(x) :: vs => let
         val x = !x
-        val _ = println!("varpos_find(", x, ")")
+        // val _ = println!("varpos_find(", x, ")")
         val j = varpos_find(vp, uid_of(x))
         val _ = if i != j then !pr1 := false
         val _ = tab[i] := j
@@ -439,12 +441,12 @@ implement mbind_apply(b, arg) =
 (* Variable creation ********************************************************)
 
 fn build_var_aux{a:type}(key:int)(vp: varpos, env: env): a = let
-  val _ = println!("varpos_find_aux(", key, " in ", funmap_listize(vp), ")");
+  // val _ = println!("varpos_find_aux(", key, " in ", funmap_listize(vp), ")");
 in
   try env_get(varpos_find(vp, key) , env) 
   with
   | ~Not_found() => (
-    println!("varpos_not_found_aux(", key, ")");
+    // println!("varpos_not_found_aux(", key, ")");
     $raise Not_found())
 end
 
@@ -453,7 +455,7 @@ fn build_var{a:type}(
   var_mkfree: mkfree(a), 
   name: string
 ): var_t(a) = let
-  val _ = println!("build_var(", name, ")")
+  // val _ = println!("build_var(", name, ")")
   val r: ref(var_t(a)) = ref($UN.cast(0))
   val x: var_t(a) = try Var@{ 
     var_key   = var_key, 
@@ -462,7 +464,8 @@ fn build_var{a:type}(
     var_box   = Env(V(r) :: nil0, i2sz(0), build_var_aux(var_key))
   }
   with ~Not_found() => (
-    println!("build_var_failed(", name, ")"); $raise Not_found)
+    // println!("build_var_failed(", name, ")"); 
+    $raise Not_found)
   val _ = !r := x
 in 
   x 
@@ -597,7 +600,7 @@ fn bind_var_aux5{a,b:type}(
   build_binder(x, rank, false, bind_var_aux4(t, env))
 
 implement bind_var(x, b) = let
-  val _ = println!("bind_var(", x, ")")
+  // val _ = println!("bind_var(", x, ")")
 in
   case b of
   | Box(t) => Box(build_binder(x, i2sz(0), false, lam(_) => t))
@@ -605,12 +608,12 @@ in
     try 
       case vs of
       | V(y) :: nil0() => let
-        val _ = println!("bind_var1")
+        // val _ = println!("bind_var1")
         val Var(x0) = x
         val Var(y0) = !y
         val _ = 
           if x0.var_key != y0.var_key then (
-            println!("not_found");
+            // println!("not_found");
             $raise Not_found)
         val r = i2sz(0)
         val t = lam(env: env) =<cloref1> 
@@ -620,12 +623,12 @@ in
         Box(build_binder(x, i2sz(0), true, value))
       end
       | _ => let
-        val _ = println!("bind_var2")
+        // val _ = println!("bind_var2")
         val vs = remove(x, vs)
         val Var(x0) = x
         val cl = lam(vp, env: env) =<cloref1> let
           val r = i2sz(vs.length())
-          val _ = println!("insert(", x, ", ", r, ")")
+          // val _ = println!("insert(", x, ", ", r, ")")
           val t = lam(env: env) =<cloref1> 
             t(varpos_insert(vp, x0.var_key, r), env)
         in
@@ -781,36 +784,36 @@ in
   }
   end
   | Env(vs, n, t) => let 
-    val _ = println!("bind_mvar0(", xs, ")")
+    // val _ = println!("bind_mvar0(", xs, ")")
     val sz = xs.size()
     val keys: array0(int) = array0_map(xs, lam(x) => 0)
     val vss = array0_map(xs, lam(x) => vs)
     var vs: list0(any_var) with pf1 = vs
     var m: size_t with pf2 = n
-    val _ = println!("bind_mvar1")
+    // val _ = println!("bind_mvar1")
     fun loop{l1,l2:addr}(
       pf1: !list0(any_var)@l1, pf2: !size_t@l2
     | i: int, vs: ptr(l1), m: ptr(l2)): void = if (0 <= i) then (
       let
         val v = xs[i]
-        val _ = println!("removing(", xs, "with",  i, " = ",  v, ")");
-        val _ = println!("from(", !vs, ")");
+        // val _ = println!("removing(", xs, "with",  i, " = ",  v, ")");
+        // val _ = println!("from(", !vs, ")");
         val Var(x0) = v
         val _ = try
           !vs := remove(v, !vs);
-          println!("removed(", v, ")");
-          println!("after_remove(", !vs, ")");
+          // println!("removed(", v, ")");
+          // println!("after_remove(", !vs, ")");
           !m := !m + 1;
           keys[i] := x0.var_key
         with ~Not_found() => (
-          println!("not_found(", v, ")");
+          // println!("not_found(", v, ")");
           keys[i] := ~1)
       in
         vss[i] := !vs
       end;
       loop(pf1, pf2 | i - 1, vs, m))
     val _ = loop(pf1, pf2 | sz2i(sz) - 1, addr@vs, addr@m)
-    val _ = println!("bind_mvar1")
+    // val _ = println!("bind_mvar1")
     val vs = vs
   in
     case vs of

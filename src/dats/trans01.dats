@@ -2,9 +2,6 @@
 #include "share/atspre_staload_libats_ML.hats"
 #define ATS_DYNLOADFLAG 0
 
-#define :: list0_cons
-#define nil0 list0_nil 
-
 #staload "./../sats/bindlib.sats"
 #staload "./../sats/term0.sats"
 #staload "./../sats/term1.sats"
@@ -59,7 +56,7 @@ fun trans_term(ctx: nmap(var_t(term1)), m: term0): box(term1) =
       val ctx = nmap_insert(ctx, x0, x)
       val ctx = nmap_insert(ctx, y0, y)
       val m = trans_term(ctx, m)
-      val xs = array0_make_list0(x :: y :: nil0)
+      val xs = array0_make_arrpsz($arrpsz(x, y))
     in
       _Fun1(bind_mvar(xs, m))
     end
