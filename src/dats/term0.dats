@@ -30,21 +30,12 @@ implement print_term0(m) = fprint_term0(stdout_ref, m)
 implement prerr_term0(m) = fprint_term0(stderr_ref, m)
 implement fprint_term0(out, m) =
   case m of
-  | I0(i) => 
-    fprint!(out, "Int(", i, ")")
-  | B0(b) => 
-    fprint!(out, "Bool(", b, ")")
-  | Var0(x) => 
-    fprint!(out, "Var(", x, ")")
-  | Uni0(opr, m) => 
-    fprint!(out, "Op1(", opr, ", ", m, ")")
-  | Bin0(opr, m, n) => 
-    fprint!(out, "Op2(", opr, ", ", m, ", ", n, ")")
-  | Fun0(f, x, m) => 
-    fprint!(out, "Fun(", f, ", ", x, ", ", m, ")")
-  | App0(m, n) =>
-    fprint!(out, "App(", m, ", ", n, ")")
-  | Let0(x, m, n) =>
-    fprint!(out, "LetIn(", x, ",", m, ", ", n, ")")
-  | Ifx0(cond, m, n) =>
-    fprint!(out, "Ifte(", cond, ", ", m, ", ", n, ")")
+  | I0(i)            => fprint!(out, "Int(", i, ")")
+  | B0(b)            => fprint!(out, "Bool(", b, ")")
+  | Var0(x)          => fprint!(out, "Var(", x, ")")
+  | Uni0(opr, m)     => fprint!(out, "Op1(", opr, ", ", m, ")")
+  | Bin0(opr, m, n)  => fprint!(out, "Op2(", opr, ", ", m, ", ", n, ")")
+  | Fun0(f, x, m)    => fprint!(out, "Fun(", f, ", ", x, ", ", m, ")")
+  | App0(m, n)       => fprint!(out, "App(", m, ", ", n, ")")
+  | Let0(x, m, n)    => fprint!(out, "LetIn(", x, ",", m, ", ", n, ")")
+  | Ifx0(cond, m, n) => fprint!(out, "Ifte(", cond, ", ", m, ", ", n, ")")
