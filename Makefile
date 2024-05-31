@@ -43,23 +43,23 @@ SATSDIR=src/sats
 DATSDIR=src/dats
 
 # Linking libraries
-INCLUDE:=
+# INCLUDE:=
 # LIBRARY:=mimalloc/out/release/mimalloc.o
 
 # C compiler flags
-CFLAGS=-g
+# CFLAGS=-g
 # CFLAGS=-g
 # CFLAGS=-g -O
-# CFLAGS=-g -O3 -flto
+CFLAGS=-g -O3 -flto
 
 # Memory allocator mode (none, libc, Bohem-gc)
 # GCFLAG=
-GCFLAG=-DATS_MEMALLOC_LIBC
-# GCFLAG=-DATS_MEMALLOC_GCBDW
+# GCFLAG=-DATS_MEMALLOC_LIBC
+GCFLAG=-DATS_MEMALLOC_GCBDW
 
 # Garbarge collection mode (only applies if memory allocation is Bohem-gc)
-LIBGC=
-# LIBGC=-lgc
+# LIBGC=
+LIBGC=-lgc
 
 # Command-line Tools ####################################################
 
