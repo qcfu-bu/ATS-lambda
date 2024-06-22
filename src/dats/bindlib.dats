@@ -546,58 +546,59 @@ fn build_binder{a,b:type}(
 
 fn bind_var_aux1{a,b:type}(
   n: size_t, 
-  t: cfun(env,a)
-)(arg: b): a = let
+  t: closure(b),
+  vp: varpos
+)(arg: a): b = let
   val env = env_create(i2sz(1), n + 1)
   val _ = env_set(env, i2sz(0), arg)
 in
-  t(env)
+  t(vp, env)
 end
 
 fn bind_var_aux2{a,b:type}(
   rank: size_t, 
-  t: cfun(env,a), 
+  t: closure(b), 
+  vp: varpos,
   env: env
-)(arg: b): a = let
+)(arg: a): b = let
   val next = env_get_next_free(env)
 in
   if next = rank then (
     env_set_next_free(env, next + 1);
     env_set(env, next, arg);
-    t(env))
+    t(vp, env))
   else let
     val env = env_copy(env)
     val _ = env_set_next_free(env, rank + 1);
     val _ = env_set(env, rank, arg);
-    // TODO: check if this is needed
-    // implement intrange_foreach$fwork<void>(i, env0) =
-    //   env_set(env, g0int2uint(i), $UN.cast{any}(0))
-    // val _ = intrange_foreach(sz2i(rank + 1), sz2i(next))
   in
-    t(env)
+    t(vp, env)
   end
 end
 
 fn bind_var_aux3{a,b:type}(
   x: var_t(a),
   rank: size_t,
-  t: cfun(env, b),
+  t: closure(b),
+  vp: varpos,
   env: env
 ): binder(a,b) =
-  build_binder(x, rank, true, bind_var_aux2(rank, t, env))
+  build_binder(x, rank, true, bind_var_aux2(rank, t, vp, env))
 
 fn bind_var_aux4{a,b:type}(
-  t: cfun(env, b), 
+  t: closure(b), 
+  vp: varpos,
   env: env
-)(_: a): b = t(env)
+)(_: a): b = t(vp, env)
 
 fn bind_var_aux5{a,b:type}(
   x: var_t(a),
   rank: size_t,
-  t: cfun(env, b),
+  t: closure(b),
+  vp: varpos,
   env: env
 ): binder(a,b) =
-  build_binder(x, rank, false, bind_var_aux4(t, env))
+  build_binder(x, rank, false, bind_var_aux4(t, vp, env))
 
 implement bind_var(x, b) = let
   // val _ = println!("bind_var(", x, ")")
@@ -616,38 +617,31 @@ in
             // println!("not_found");
             $raise Not_found)
         val r = i2sz(0)
-        val t = lam(env: env) =<cloref1> 
-          t(varpos_unit(x0.var_key, r), env)
-        val value = bind_var_aux1(n, t)
+        val vp = varpos_unit(x0.var_key, r)
+        val value = bind_var_aux1(n, t, vp)
       in
         Box(build_binder(x, i2sz(0), true, value))
       end
       | _ => let
-        // val _ = println!("bind_var2")
         val vs = remove(x, vs)
         val Var(x0) = x
-        val cl = lam(vp, env: env) =<cloref1> let
-          val r = i2sz(vs.length())
-          // val _ = println!("insert(", x, ", ", r, ")")
-          val t = lam(env: env) =<cloref1> 
-            t(varpos_insert(vp, x0.var_key, r), env)
-        in
-          bind_var_aux3(x, r, t, env)
-        end
+        val cl = lam(vp, env: env) =<cloref1> 
+          let val r = i2sz(vs.length())
+              val vp = varpos_insert(vp, x0.var_key, r)
+          in  bind_var_aux3(x, r, t, vp, env)
+          end
       in
         Env(vs, n + 1, cl)
       end
     with
     | ~Not_found() => let
-      val value = lam(vp, env: env) =<cloref1> let
-        val t = lam(env: env) =<cloref1> t(vp, env)
-        val rank = g1int2uint(vs.length()) 
+      val value = lam(vp, env: env) =<cloref1> 
+        let val rank = g1int2uint(vs.length()) 
+        in bind_var_aux5(x, rank, t, vp, env)
+        end
       in
-        bind_var_aux5(x, rank, t, env)
+        Env(vs, n, value)
       end
-    in
-      Env(vs, n, value)
-    end
 end
 
 implement box_binder(f, b) =
@@ -670,7 +664,8 @@ fn bind_mvar_aux1{a,b:type}(
   m: size_t, 
   xs: mvar(a), 
   mb_binds: array0(bool),
-  t: cfun(env,b)
+  t: closure(b),
+  vp: varpos
 )(args: array0(a)): b = let
   val _ = check_arity(xs, args)
   val v = env_create(i2sz(0), m)
@@ -686,37 +681,40 @@ fn bind_mvar_aux1{a,b:type}(
   val _ = loop(pf | i2sz(0), addr@pos)
   val _ = env_set_next_free(v, pos)
 in
-  t(v)
+  t(vp, v)
 end
 
 fn bind_mvar_aux2{a,b:type}(
   xs: mvar(a),
-  t: cfun(env,b),
+  t: closure(b),
+  vp: varpos,
   env: env
 )(args: array0(a)): b =
-  (check_arity(xs, args); t(env))
+  (check_arity(xs, args); t(vp, env))
 
 fn bind_mvar_aux3{a,b:type}(
   xs: mvar(a),
-  t: cfun(env,b),
+  t: closure(b),
   mb_names: array0(string),
   mb_rank: size_t, 
   mb_binds: array0(bool),
   mb_mkfree: array0(mkfree(a)),
+  vp: varpos,
   env: env
 ): mbinder(a, b) = '{
   mb_names  = mb_names,
   mb_binds  = mb_binds,
   mb_rank   = mb_rank,
   mb_mkfree = mb_mkfree,
-  mb_value  = bind_mvar_aux2(xs, t, env)
+  mb_value  = bind_mvar_aux2(xs, t, vp, env)
 }
 
 fn bind_mvar_aux4{a,b:type}(
   xs: mvar(a),
-  t: cfun(env,b),
+  t: closure(b),
   mb_rank: size_t,
   mb_binds: array0(bool),
+  vp: varpos,
   env: env
 )(args: array0(a)): b = let
   val _ = check_arity(xs, args)
@@ -735,35 +733,32 @@ in
     val _ = loop(pf | i2sz(0), addr@cur_pos, env)
     val _ = env_set_next_free(env, cur_pos)
   in
-    t(env)
+    t(vp, env)
   end 
   else let
     val env = env_copy(env)
     val _ = loop(pf | i2sz(0), addr@cur_pos, env)
     val _ = env_set_next_free(env, cur_pos)
-    // TODO: check if this is needed
-    // implement intrange_foreach$fwork<void>(i, env0) =
-    //   env_set(env, g0int2uint(i), $UN.cast{any}(0))
-    // val _ = intrange_foreach(sz2i(cur_pos), sz2i(next))
   in
-    t(env)
+    t(vp, env)
   end
 end
 
 fn bind_mvar_aux5{a,b:type}(
   xs: mvar(a),
-  t: cfun(env,b),
+  t: closure(b),
   mb_names: array0(string),
   mb_rank: size_t,
   mb_binds: array0(bool),
   mb_mkfree: array0(mkfree(a)),
+  vp: varpos,
   env: env
 ): mbinder(a,b) = '{
   mb_names  = mb_names,
   mb_binds  = mb_binds,
   mb_rank   = mb_rank,
   mb_mkfree = mb_mkfree,
-  mb_value  = bind_mvar_aux4(xs, t, mb_rank, mb_binds, env) 
+  mb_value  = bind_mvar_aux4(xs, t, mb_rank, mb_binds, vp, env) 
 }
 
 implement bind_mvar(xs, b) = let
@@ -839,8 +834,7 @@ in
         end; loop(pf1, pf2 | i + 1, cur_pos, vp))
       val _ = loop(pf1, pf2 | i2sz(0), addr@cur_pos, addr@vp)
       val vp = vp
-      val t = lam(env: env) =<cloref1> t(vp, env)
-      val mb_value = bind_mvar_aux1(m, xs, mb_binds, t)
+      val mb_value = bind_mvar_aux1(m, xs, mb_binds, t, vp)
     in Box '{
       mb_names  = mb_names,
       mb_binds  = mb_binds,
@@ -849,19 +843,16 @@ in
       mb_value  = mb_value
     }
     end
-    | _ when m = n => let
-      val cl = lam(vp, env: env) =<cloref1> let
-        val mb_rank = g1int2uint(vs.length())
-        val mb_binds = array0_map(xs, lam(x) => false)
-        val mb_names = array0_map(xs, lam(x) => 
-          let val Var(x0) = x in x0.var_name end)
-        val t = lam(env: env) =<cloref1> t(vp, env)
-      in
-        bind_mvar_aux3(xs, t, mb_names, mb_rank, mb_binds, mb_mkfree, env)
+    | _ when m = n => 
+      let val cl = lam(vp, env: env) =<cloref1> 
+          let val mb_rank = g1int2uint(vs.length())
+              val mb_binds = array0_map(xs, lam(x) => false)
+              val mb_names = array0_map(xs, lam(x) => 
+                let val Var(x0) = x in x0.var_name end)
+          in  bind_mvar_aux3(xs, t, mb_names, mb_rank, mb_binds, mb_mkfree, vp, env)
+          end
+      in  Env(vs, n, cl)
       end
-    in
-      Env(vs, n, cl)
-    end
     | _ => let
       val cl = lam(vp, env: env) =<cloref1> let
         val mb_names = array0_map(xs, lam(x) => "")
@@ -886,9 +877,8 @@ in
           end; loop(pf1, pf2 | i + 1, cur_pos, vp))
         val _ = loop(pf1, pf2 | i2sz(0), addr@cur_pos, addr@vp)
         val vp = vp
-        val t = lam(env: env) =<cloref1> t(vp, env)
       in
-        bind_mvar_aux5(xs, t, mb_names, mb_rank, mb_binds, mb_mkfree, env)
+        bind_mvar_aux5(xs, t, mb_names, mb_rank, mb_binds, mb_mkfree, vp, env)
       end
     in
       Env(vs, m, cl)
