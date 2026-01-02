@@ -17,7 +17,7 @@ fun hash_key(k: string) =
 implement mk_name(str) = (str, hash_key(str))
 implement eq_name(x1, x2) = x1.1 = x2.1
 implement id_of_name(x) = x.1
-implement string_of_name(x) = x.0 
+implement string_of_name(x) = x.0
 implement gcompare_val_val<name>(x, y) = let
   val x = $UN.cast{int}(x.1)
   val y = $UN.cast{int}(y.1)

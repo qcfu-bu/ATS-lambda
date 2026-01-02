@@ -50,7 +50,7 @@ DATSDIR=src/dats
 # CFLAGS=-g
 # CFLAGS=-g
 # CFLAGS=-g -O
-CFLAGS=-g -O3 -flto
+CFLAGS=-O3 -flto
 
 # Memory allocator mode (none, libc, Bohem-gc)
 # GCFLAG=
@@ -64,7 +64,7 @@ LIBGC=-lgc
 # Command-line Tools ####################################################
 
 # C compiler
-CC=clang
+CC=gcc-15
 
 # ATS compiler
 PATSCC=patscc
